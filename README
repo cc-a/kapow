@@ -1,0 +1,6 @@
+Implementation of a adapter class designed to provide a more Pythonic
+interface to the OpenMM molecular simulation toolkit. Taking advantage
+of the dynamic properties of the Python programming language this
+module mostly aims to circumvent the use of getters and setters in
+OpenMM objects, replacing them with the use of properties and more
+sophisticated descriptors as required.
