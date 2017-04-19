@@ -51,13 +51,17 @@ class TestWrappedClasses(unittest.TestCase):
         inst.forceGroup = 2
         self.assertEqual(inst.forceGroup, 2)
 
+    def testMonkeyTyping(self):
 
-# prmtop = openmm.app.AmberPrmtopFile('../multisim/plugin/tests/prot_lig1.prmtop')
-# prmcrd = openmm.app.AmberInpcrdFile('../multisim/plugin/tests/prot_lig1.prmcrd')
+        prmtop = openmm.app.AmberPrmtopFile('../multisim/plugin/tests/prot_lig1.prmtop')
+        prmcrd = openmm.app.AmberInpcrdFile('../multisim/plugin/tests/prot_lig1.prmcrd')
 
-# residues = list(prmtop.topology.residues())
-# system = prmtop.createSystem(constraints=openmm.app.HBonds,
-#                              removeCMMotion=True)
+        residues = list(prmtop.topology.residues())
+        system = prmtop.createSystem(constraints=openmm.app.HBonds,
+                                     removeCMMotion=True)
+        print system
+        print system.__class__.__name__
+        print system.this
 
 # #particles # need virtual site tests
 # wrapped.particles

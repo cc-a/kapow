@@ -5,7 +5,8 @@ from collections import namedtuple
 class BaseWrapper(object):
     """Fundamental wrapper class. 
 
-    Provides default arguments that raise Exceptions if used."""
+    Provides default arguments that raise Exceptions if used.
+    """
     def default_setter(self, *args, **kwargs):
         raise AttributeError('No setter available for this wrapper')
 
@@ -36,8 +37,8 @@ class ArrayWrapper(BaseWrapper):
         self.setter = self.default_setter if setter is None else setter
         self.adder = self.default_adder if adder is None else adder
         self.remover = self.default_remover if remover is None else remover
-        self.member_wrapper = ( self.default_member_wrapper
-                                if member_wrapper is None else member_wrapper )
+        self.member_wrapper = (self.default_member_wrapper
+                               if member_wrapper is None else member_wrapper)
         if adder:
             self.append = self._append
         if remover:
@@ -119,7 +120,7 @@ class Pythonize(type):
     """
     def __new__(mcs, name, bases, attrs):
         for i in attrs['arrays_to_wrap']:
-            name = '%ss' % i.lower()
+            method_name = '%ss' % i.lower()
             len_ = getattr(bases[0],'getNum%ss' % i)
             try:
                 getter = next(j for j in bases[0].__dict__ if ('get%s' % i) in j)
@@ -129,7 +130,7 @@ class Pythonize(type):
                 setter = next(j for j in bases[0].__dict__ if ('set%s' % i) in j)
             except StopIteration:
                 setter = ''
-            attrs[name] = ArrayWrapper(
+            attrs[method_name] = ArrayWrapper(
                 len_=len_,
                 getter=getattr(bases[0], getter, None),
                 setter=getattr(bases[0], setter, None),
@@ -159,11 +160,11 @@ class Pythonize(type):
                     pairX.pop(pairX.index(i))
                     break
 
-        # create 
+        # create attributes for all values
         for i in pairX:
-            name = i[:1].lower() + i[1:] if i[1:2].islower() else i
-            attrs[name] = ValueWrapper(getattr(bases[0], 'get%s' % i),
-                                       getattr(bases[0], 'set%s' % i))
+            method_name = i[:1].lower() + i[1:] if i[1:2].islower() else i
+            attrs[method_name] = ValueWrapper(getattr(bases[0], 'get%s' % i),
+                                              getattr(bases[0], 'set%s' % i))
 
         attrs.pop('arrays_to_wrap')
         return type.__new__(mcs, name, bases, attrs)
@@ -184,7 +185,8 @@ class System(openmm.System):
     arrays_to_wrap = ['Particle',
                       'Constraint',
                       'Force']
-
+# openmm.System = System
+# print System
 
 class HarmonicBondForce(openmm.HarmonicBondForce, Force):
     __metaclass__ = Pythonize
