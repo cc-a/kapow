@@ -1,9 +1,9 @@
 from simtk import openmm
-from simtk.openmm import app
-from collections import namedtuple
+# from collections import namedtuple
+
 
 class BaseWrapper(object):
-    """Fundamental wrapper class. 
+    """Fundamental wrapper class.
 
     Provides default arguments that raise Exceptions if used.
     """
@@ -21,7 +21,8 @@ class BaseWrapper(object):
             return args[0]
         else:
             return args
-    
+
+
 class ArrayWrapper(BaseWrapper):
     """Interface to underlying C++ array mimicing list semantics.
 
@@ -43,7 +44,7 @@ class ArrayWrapper(BaseWrapper):
             self.append = self._append
         if remover:
             self.pop = self._pop
-        
+
     def __getitem__(self, val):
         try:
             return self.member_wrapper(self.getter(self.parent, val))
@@ -55,7 +56,7 @@ class ArrayWrapper(BaseWrapper):
             return self.setter(val, *args)
         except TypeError:
             return self.setter(val, args)
-    
+
     def __len__(self):
         return self.len_(self.parent)
 
@@ -67,7 +68,9 @@ class ArrayWrapper(BaseWrapper):
     def _append(self, *val):
         try:
             return self.adder(self.parent, *val)
-        except TypeError:
+        except TypeError as e:
+            # this can cause uninformative error messages
+            print e
             return self.adder(self.parent, val)
 
     def _pop(self, index):
@@ -75,17 +78,20 @@ class ArrayWrapper(BaseWrapper):
         self.remover(index)
         return val
 
-    def __get__(self, obj, objtype = None):
+    def __get__(self, obj, objtype=None):
         self.parent = obj
         return self
 
     def __set__(self, *args):
         raise AttributeError('Attribute is read-only')
-    
-    def __repr__(self):
-        return "<Wrapped C-array containing %d objects>" % len(self)
 
-    
+    def __repr__(self):
+        try:
+            return "<Wrapped C-array containing %d objects>" % len(self)
+        except TypeError:
+            return "<C-array Wrapper>"
+
+
 class ValueWrapper(BaseWrapper, property):
     """Wrapper class for a single value or set of values.
 
@@ -99,9 +105,9 @@ class ValueWrapper(BaseWrapper, property):
         self.member_wrapper = (self.default_member_wrapper
                                if member_wrapper is None else member_wrapper)
 
-    def __get__(self, obj, objtype = None):
+    def __get__(self, obj, objtype=None):
         return self.member_wrapper(property.__get__(self, obj, objtype))
-        
+
     def __set__(self, obj, value):
         if self.fset is None:
             raise AttributeError("Attribute is read-only")
@@ -109,6 +115,7 @@ class ValueWrapper(BaseWrapper, property):
             self.fset(obj, *value)
         except TypeError:
             self.fset(obj, value)
+
 
 class Pythonize(type):
     """Metaclass to provide a more Pythonic interface to openmm objects.
@@ -121,13 +128,19 @@ class Pythonize(type):
     def __new__(mcs, name, bases, attrs):
         for i in attrs['arrays_to_wrap']:
             method_name = '%ss' % i.lower()
-            len_ = getattr(bases[0],'getNum%ss' % i)
+            len_ = getattr(bases[0], 'getNum%ss' % i)
             try:
-                getter = next(j for j in bases[0].__dict__ if ('get%s' % i) in j)
+                getter = next(j for j in bases[0].__dict__
+                              if ('get%s' % i) == j)
             except StopIteration:
-                getter = ''
+                try:
+                    getter = next(j for j in bases[0].__dict__
+                                  if ('get%s' % i) in j)
+                except StopIteration:
+                    getter = ''
             try:
-                setter = next(j for j in bases[0].__dict__ if ('set%s' % i) in j)
+                setter = next(j for j in bases[0].__dict__
+                              if ('set%s' % i) in j)
             except StopIteration:
                 setter = ''
             attrs[method_name] = ArrayWrapper(
@@ -169,27 +182,28 @@ class Pythonize(type):
         attrs.pop('arrays_to_wrap')
         return type.__new__(mcs, name, bases, attrs)
 
+
 class Force(openmm.Force):
     __metaclass__ = Pythonize
     arrays_to_wrap = []
+openmm.Force = Force
 
-# openmm.Force = Force
-    
+
 class NonbondedForce(openmm.NonbondedForce):
     __metaclass__ = Pythonize
     arrays_to_wrap = ['Particle',
                       'Exception']
-    
+
+
 class System(openmm.System):
     __metaclass__ = Pythonize
     arrays_to_wrap = ['Particle',
                       'Constraint',
                       'Force']
-# openmm.System = System
-# print System
+openmm.System = System
+
 
 class HarmonicBondForce(openmm.HarmonicBondForce, Force):
     __metaclass__ = Pythonize
     arrays_to_wrap = ['Bond']
-        
-        
+openmm.HarmonicBondForce = HarmonicBondForce
