@@ -5,8 +5,15 @@ from simtk import openmm
 from simtk.openmm import app
 
 from simtk.unit import nanometer, elementary_charge, kilojoule_per_mole
-from simtk.unit import dalton
+from simtk.unit import dalton, radian
 
+
+# TODO
+
+# Test DictWrapper on objects that already contains items, e.g. a system object
+# with virtual sites already created when wrapped.
+
+# Unit tests for wrapper objects
 
 class TestWrappedClasses(unittest.TestCase):
     def inst_test(self, inst, attrs):
@@ -44,8 +51,8 @@ class TestWrappedClasses(unittest.TestCase):
                           'particles',
                           'createExceptionsFromBonds',
                           'cutoffDistance',
-                          'ewaldErrorTolerance',
                           'forceGroup',
+                          'ewaldErrorTolerance',
                           'nonbondedMethod',
                           'PMEParameters',
                           'getPMEParametersInContext',
@@ -70,14 +77,14 @@ class TestWrappedClasses(unittest.TestCase):
         self.assignValues(inst, 'useDispersionCorrection', True, False)
         self.assignValues(inst, 'useSwitchingFunction', True, False)
 
-        inst.particles.append(0.0, 0.0, 0.0)
+        inst.particles.append((0.0, 0.0, 0.0))
         self.assertEqual(inst.particles[0],
                          [0. * elementary_charge,
                           0. * nanometer,
                           0. * kilojoule_per_mole])
         self.assertEqual(inst.particles[0],
                          inst.wrapped_object.getParticleParameters(0))
-        inst.exceptions.append(1, 2, 0.0, 0.0, 0.0)
+        inst.exceptions.append((1, 2, 0.0, 0.0, 0.0))
         self.assertEqual(inst.exceptions[0],
                          [1, 2,
                           0. * elementary_charge**2,
@@ -100,13 +107,43 @@ class TestWrappedClasses(unittest.TestCase):
                           'usesPeriodicBoundaryConditions']
         self.inst_test(inst, attrs_to_check)
 
-        inst.bonds.append(0, 1, 0. * nanometer,
-                          0. * kilojoule_per_mole / nanometer**2)
+        inst.bonds.append((0, 1, 0. * nanometer,
+                          0. * kilojoule_per_mole / nanometer**2))
         self.assertEqual(inst.bonds[0],
                          [0, 1, 0. * nanometer,
                           0. * kilojoule_per_mole / nanometer**2])
         self.assertEqual(inst.bonds[0],
                          inst.wrapped_object.getBondParameters(0))
+
+        inst.forceGroup = 2
+        self.assertEqual(inst.forceGroup, 2)
+        self.assignValues(inst, 'usesSwitchingFunction', True, False)
+        self.assertRaisesRegexp(TypeError,
+                                'updateParametersInContext\(\) takes exactly '
+                                '2 arguments \(1 given\)',
+                                callable_obj=inst.updateParametersInContext)
+
+    def testHarmonicAngleForce(self):
+        """A very comprehensive test for a very simpler class,
+        exhaustively checks that all methods are defined as expected
+        and can be accessed or added to as required
+        """
+
+        base_inst = openmm.HarmonicAngleForce()
+        inst = adapter.HarmonicAngleForce(base_inst)
+        attrs_to_check = ['angles',
+                          'forceGroup',
+                          'updateParametersInContext',
+                          'usesPeriodicBoundaryConditions']
+        self.inst_test(inst, attrs_to_check)
+
+        inst.angles.append((0, 1, 2, 0. * radian,
+                            0. * kilojoule_per_mole / radian**2))
+        self.assertEqual(inst.angles[0],
+                         [0, 1, 2, 0. * radian,
+                          0. * kilojoule_per_mole / radian**2])
+        self.assertEqual(inst.angles[0],
+                         inst.wrapped_object.getAngleParameters(0))
 
         inst.forceGroup = 2
         self.assertEqual(inst.forceGroup, 2)
@@ -124,13 +161,13 @@ class TestWrappedClasses(unittest.TestCase):
                           'particles',
                           'forces',
                           'defaultPeriodicBoxVectors',
-                          # 'virtualSite',
+                          'virtualSites',
                           'usesPeriodicBoundaryConditions']
         self.inst_test(inst, attrs_to_check)
 
         self.assertEqual(len(inst.particles), 0)
-        inst.particles.append((1.))
-        inst.particles.append((2.))
+        inst.particles.append((1.,))
+        inst.particles.append((2.,))
         self.assertEqual(len(inst.particles), 2)
         self.assertEqual(inst.particles[0], 1. * dalton)
         self.assertEqual(inst.particles[1], 2. * dalton)
@@ -138,11 +175,11 @@ class TestWrappedClasses(unittest.TestCase):
         self.assertEqual(inst.particles[0], 3. * dalton)
 
         self.assertEqual(len(inst.constraints), 0)
-        inst.constraints.append(0, 1, 1. * nanometer)
+        inst.constraints.append((0, 1, 1. * nanometer))
         self.assertEqual(inst.constraints[0],
                          [0, 1, 1. * nanometer])
         self.assertEqual(len(inst.constraints), 1)
-        inst.constraints[0] = 0, 1, 2. * nanometer
+        inst.constraints[0] = (0, 1, 2. * nanometer)
         self.assertEqual(inst.constraints[0],
                          [0, 1, 2. * nanometer])
 
@@ -154,7 +191,18 @@ class TestWrappedClasses(unittest.TestCase):
         self.assertEqual(len(inst.forces), 1)
         inst.forces.pop(0)
         self.assertEqual(len(inst.forces), 0)
-        
+
+        # Add a third particle to be a virtual site for the first two
+        inst.particles.append((3.,))
+        vs = openmm.TwoParticleAverageSite(0, 1, 0.5, 0.5)
+        wrapped_vs = adapter.TwoParticleAverageSite(vs)
+        self.assertEqual(len(inst.virtualSites), 0)
+        inst.virtualSites[2] = wrapped_vs
+        self.assertEqual(len(inst.virtualSites), 1)
+        self.assertEqual(inst.virtualSites.keys(), [2])
+        vs_out = inst.virtualSites[2]
+        self.assertEqual(wrapped_vs.particles, vs_out.particles)
+
     def testCustomNonbondedForce(self):
         base_inst = openmm.CustomNonbondedForce('r')
         inst = adapter.CustomNonbondedForce(base_inst)
@@ -177,8 +225,14 @@ class TestWrappedClasses(unittest.TestCase):
             'usesPeriodicBoundaryConditions'
         ]
         self.inst_test(inst, attrs_to_check)
-        
-        
+
+        self.assertEqual(len(inst.globalParameters), 0)
+        inst.globalParameters.append(('jon', 0))
+        print inst.globalParameters
+        self.assertEqual(len(inst.globalParameters), 1)
+        self.assertEqual(inst.globalParameters[0], ('jon', 0))
+        inst.globalParameters[0] = ('chris', 1)
+
         
         # self.assertRaises(Exception,lambda : inst.forces[0])
 
