@@ -7,10 +7,7 @@ import sys
 
 # TODO
 
-# Virtual site getWeight function
-
-# DictWrapper dynamic key determination
-
+# Create instances without wrapping 
 
 def wrap_method(func):
     """This wrapper provides compatibility by accessing the underlying
@@ -212,8 +209,8 @@ class ArrayWrapper(BaseWrapper):
     with array through getter and setter routines.
     Optional adder and remover routines can be used as well.
     """
-    def __init__(self, base, len_, getters, setters=None, adder=None,
-                 remover=None, member_wrapper=None):
+    def __init__(self, base, len_, getters, setters=[], adder=[],
+                 remover=[], member_wrapper=[]):
         self.parent = None
         self.len_ = getattr(base, len_)
         self.member_wrapper = None
@@ -225,8 +222,8 @@ class ArrayWrapper(BaseWrapper):
             # record the order in which arguments occur in the adder
             # so that we can make sure that the order of getters and
             # setters matches
-            spec= inspect.getargspec(self.adder)
-            args = spec.args[1:] #+ spec.kwargs
+            spec = inspect.getargspec(self.adder)
+            args = spec.args[1:]  # + spec.kwargs
             # if args == []:
             #     args = ()
             # self.member_wrapper = namedtuple(len_[6:-1], args)
@@ -252,8 +249,10 @@ class ArrayWrapper(BaseWrapper):
         else:
             self.remover = getattr(base, remover[0])
 
-        self.member_wrapper = (self.default_member_wrapper
-                               if self.member_wrapper is None else self.member_wrapper)
+        self.member_wrapper = self.default_member_wrapper \
+            if self.member_wrapper is None \
+            else self.member_wrapper
+
         # self.member_wrapper = self.member_wrapper or self.default_member_wrapper
         if adder is not None:
             self.append = self._append
@@ -355,6 +354,8 @@ class ValueWrapper(BaseWrapper, property):
         try:
             return self.member_wrapper(
                 property.__get__(self, obj, objtype))
+        except TypeError:
+            return self.member_wrapper(self.fget())
         except AttributeError:
             return self
 
@@ -368,49 +369,39 @@ class ValueWrapper(BaseWrapper, property):
 
 
 class DictWrapper(BaseWrapper, property):
-    """At the current time this is fundamentally flawed. Adding members
-    directly to the wrapped object will not update self._keys.
-    Ultimately the key list must be built dynamically from the wrapped object.
-    """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, fget=None, fset=None, fdel=None, doc=None,
+                 frange=None, ffilter=None):
         self.parent = None
         self.member_wrapper = self.default_member_wrapper
-        property.__init__(self, *args)
-        self._keys = []
-
-    #     self.getter = getattr(base, getter)
-    #     self.setter = getattr(base, setter)
-    # @staticmethod
-    # def withFilter(filter_func):
-    #     return partial(DictWrapper, filter_func=filter_func)
+        property.__init__(self, fget, fset, fdel, doc)
+        self.frange = frange
+        self.ffilter = ffilter
 
     @wrap_method
     def __getitem__(self, key):
-        # try:
-            # return self.member_wrapper(
-            #     self.getter(self.parent, val))
-        # print [g(self.parent, val)
-        #        for g in self.getters]
-        
-        # return self.member_wrapper(self.getter(self.parent, val))
         try:
             return self.member_wrapper(self.fget(self.parent, key))
         except Exception as err:
             raise KeyError(err)
-        # except TypeError:
-        #     return self.member_wrapper(
-        #         *self.getter(self.parent, val))
 
     @wrap_method
     def __setitem__(self, key, val):
         self.fset(self.parent, key, val)
-        self._keys.append(key)
+
+    def setter(self, fset):
+        return type(self)(self.fget, fset, self.fdel, self.__doc__,
+                          self.frange, self.ffilter)
 
     def keys(self):
-        return list(self._keys)
+        if self.frange and self.ffilter:
+            return [val for val in self.frange(self.parent)
+                    if self.ffilter(self.parent, val)]
+        else:
+            raise NotImplementedError(
+                'cannot do without frange and ffilter yet')
 
     def iterkeys(self):
-        return iter(self._keys)
+        return iter(self.keys())
 
     def values(self):
         return [self[key] for key in self]
@@ -425,33 +416,34 @@ class DictWrapper(BaseWrapper, property):
         return len(self.keys())
 
     def __get__(self, obj, objtype=None):
-        try:
-            self.parent = obj.wrapped_object
-        except AttributeError:
-            pass
+        self.parent = obj.wrapped_object
         return self
 
     def __set__(self, *args):
         raise AttributeError('Attribute is read-only')
 
-def init(self, inst):
-    self.wrapped_object = inst
 
+# def init(self, inst):
+#     self.wrapped_object = inst
 
-# taken from wikipedia - so yeah...
-def longest_common_substring(s1, s2):
-    m = [[0] * (1 + len(s2)) for i in xrange(1 + len(s1))]
-    longest, x_longest = 0, 0
-    for x in xrange(1, 1 + len(s1)):
-        for y in xrange(1, 1 + len(s2)):
-            if s1[x - 1] == s2[y - 1]:
-                m[x][y] = m[x - 1][y - 1] + 1
-                if m[x][y] > longest:
-                    longest = m[x][y]
-                    x_longest = x
-            else:
-                m[x][y] = 0
-    return s1[x_longest - longest: x_longest]
+# def create_wrap_function:
+#     def Wrap(inst):
+#         pass
+
+# # taken from wikipedia - so yeah...
+# def longest_common_substring(s1, s2):
+#     m = [[0] * (1 + len(s2)) for i in xrange(1 + len(s1))]
+#     longest, x_longest = 0, 0
+#     for x in xrange(1, 1 + len(s1)):
+#         for y in xrange(1, 1 + len(s2)):
+#             if s1[x - 1] == s2[y - 1]:
+#                 m[x][y] = m[x - 1][y - 1] + 1
+#                 if m[x][y] > longest:
+#                     longest = m[x][y]
+#                     x_longest = x
+#             else:
+#                 m[x][y] = 0
+#     return s1[x_longest - longest: x_longest]
 
 
 class Test(type):
@@ -466,11 +458,14 @@ class Test(type):
 
         if '__init__' not in attrs:
             attrs['__init__'] = init
+
         attrs_to_add = {}
         for base_class in bases[0].__mro__[:-1]:
             attrs_to_add.update(base_class.__dict__)
 
         for method in attrs['exclude']:
+            attrs_to_add.pop(method)
+        for method in attrs['preserve']:
             attrs_to_add.pop(method)
 
         all_array_roots = [attr[6:-1]
@@ -545,11 +540,15 @@ class Test(type):
                             setter)
                         used_methods.update((attr, setter))
                     except TypeError:
-                        attrs[method_name + 's'] = DictWrapper(
-                            bases[0],
-                            attr,
-                            setter)
-                        used_methods.update((attr, setter))
+                        arg_spec = inspect.getargspec(
+                            getattr(bases[0], attr))
+                        if arg_spec.defaults is None or \
+                           len(arg_spec.args) == 2:
+                            attrs[method_name + 's'] = DictWrapper(
+                                bases[0],
+                                attr,
+                                setter)
+                            used_methods.update((attr, setter))
                 else:
                     try:
                         attrs[method_name] = ValueWrapper(
@@ -565,17 +564,24 @@ class Test(type):
             if attr not in used_methods and not attr.startswith('__'):
                 attrs[attr] = attrs_to_add[attr]
 
+        for attr in attrs['preserve']:
+            attrs[attr] = getattr(bases[0], attr)
+
         attrs.pop('exclude')
+        attrs.pop('preserve')
         return type.__new__(mcs, name, (), attrs)
 
 
 class System(openmm.System):
     __metaclass__ = Test
-    exclude = ['getForces', 'getVirtualSite', 'setVirtualSite', 'isVirtualSite']
-    def __init__(self, inst):
-        self.wrapped_object = inst
+    exclude = ['getForces', 'getVirtualSite',
+               'setVirtualSite', 'isVirtualSite']
+    preserve = []
+    # def __init__(self, inst):
+    #     self.wrapped_object = inst
 
-    @DictWrapper
+    @partial(DictWrapper, ffilter=openmm.System.isVirtualSite,
+             frange=lambda x: xrange(openmm.System.getNumParticles(x)))
     def virtualSites(self, key):
         return openmm.System.getVirtualSite(self, key)
 
@@ -583,20 +589,72 @@ class System(openmm.System):
     def virtualSites(self, key, value):
         return openmm.System.setVirtualSite(self, key, value)
 
+
+class Platform(openmm.Platform):
+    __metaclass__ = Test
+    exclude = ['getPropertyDefaultValue', 'setPropertyDefaultValue']
+    preserve = ['getPropertyValue', 'setPropertyValue']
+
+    @partial(DictWrapper, ffilter=lambda x, y: True,
+             frange=lambda x: openmm.Platform.getPropertyNames(x))
+    def propertyDefaults(self, key):
+        return openmm.Platform.getPropertyDefaultValue(self, key)
+
+    @propertyDefaults.setter
+    def propertyDefaults(self, key, value):
+        return openmm.Platform.setPropertyDefaultValue(self, key, value)
+
+
+class AmoebaMultipoleForce(openmm.AmoebaMultipoleForce):
+    __metaclass__ = Test
+    exclude = ['getCovalentMap', 'setCovalentMap', 'getCovalentMaps']
+    preserve = []
+
+    @partial(
+        DictWrapper, ffilter=lambda x, y: True,
+        frange=lambda x: xrange(
+            openmm.AmoebaMultipoleForce.getNumMultipoles(x)))
+    def covalentMaps(self, key):
+        return openmm.AmoebaMultipoleForce.getCovalentMaps(self, key)
+
+    @covalentMaps.setter
+    def covalentMaps(self, key, value):
+        if len(value) != 8:
+            raise TypeError('Covalent Map must be a tuple of length 8')
+        for i, val in enumerate(value):
+            openmm.AmoebaMultipoleForce.setCovalentMap(self, key, i, val)
+
+
+class TwoParticleAverageSite(openmm.TwoParticleAverageSite):
+    __metaclass__ = Test
+    exclude = ['getNumParticles', 'getParticle', 'getWeight']
+    preserve = []
+    particles = ArrayWrapper(
+        openmm.TwoParticleAverageSite,
+        'getNumParticles',
+        ['getParticle', 'getWeight'])
+
+
 exclusions = defaultdict(
     lambda: [],
     {'System': ['getForces'],  # convenience function that is not needed
                 # 'getVirtualSite',
                 # 'setVirtualSite'],  # index, value pair
-     'AmoebaMultipoleForce': ['getCovalentMap', # (index, typeid), value pair
-                              'setCovalentMap'], # also getCovalentMaps
-     'Context': ['getParameter', 'setParameter', # name, value pair, also getParameters
-                 'getState'],
+     # 'AmoebaMultipoleForce': ['getCovalentMap', # (index, typeid), value pair
+     #                          'setCovalentMap'], # also getCovalentMaps
+     'Context': [
+         # 'getParameter',
+         # 'setParameter', # name, value pair, also getParameters
+         # 'getState'
+     ],
      'CustomCentroidBondForce': ['getNumGroupsPerBond'], # name mangling
      'CustomCompoundBondForce': ['getNumParticlesPerBond'], # name mangling
      'CustomManyParticleForce': ['getNumParticlesPerSet', # name mangling
                                  'getTypeFilter'], # index, value pair
-     'Platform': ['getPropertyDefaultValue', 'getPropertyValue']}) # name, value pair
+     'Platform': [
+         # 'getPropertyDefaultValue',
+         'getPropertyValue'
+     ]}) # name, value pair
 
 module = sys.modules[__name__]
 class_map = {}
@@ -606,11 +664,11 @@ for name in [n for n in dir(openmm) if inspect.isclass(getattr(openmm, n))]:
         openmm_class = getattr(openmm, name)
         new_class = Test(name,
                          [openmm_class],
-                         {'exclude': exclusions[name]})
+                         {'exclude': exclusions[name], 'preserve': []})
         setattr(module, name, new_class)
-        class_map[openmm_class] = new_class
     else:
         print 'skipping', name
+    class_map[getattr(openmm, name)] = getattr(module, name)
 
 
 # class CustomNonbondedForce(openmm.CustomNonbondedForce):
@@ -629,14 +687,14 @@ prmcrd = app.AmberInpcrdFile('../tests/prot_lig1.prmcrd')
 
 from simtk.unit import picoseconds
 system = prmtop.createSystem()
-vs = openmm.TwoParticleAverageSite(0, 1, 0.5, 0.5)
-system.setVirtualSite(0, vs)
-print id(vs), id(system.getVirtualSite(0))
+# vs = openmm.TwoParticleAverageSite(0, 1, 0.5, 0.5)
+# system.setVirtualSite(0, vs)
+# print id(vs), id(system.getVirtualSite(0))
 
 # wrapped = System(system)
-# integrator = openmm.VerletIntegrator(0.001 * picoseconds)
-# context = openmm.Context(system, integrator)
-
+integrator = openmm.VerletIntegrator(0.001 * picoseconds)
+context = openmm.Context(system, integrator)
+wrapped = Context(context)
 
 # residues = list(prmtop.topology.residues())
 

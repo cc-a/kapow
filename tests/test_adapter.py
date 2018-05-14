@@ -153,6 +153,21 @@ class TestWrappedClasses(unittest.TestCase):
                                 '2 arguments \(1 given\)',
                                 callable_obj=inst.updateParametersInContext)
 
+    def testWrappingAlreadyCreated(self):
+        base_inst = openmm.System()
+        base_inst.addParticle(1.)
+        base_inst.addParticle(2.)
+        base_inst.addParticle(3.)
+        vs = openmm.TwoParticleAverageSite(0, 1, 0.5, 0.5)
+        base_inst.setVirtualSite(2, vs)
+        inst = adapter.System(base_inst)
+
+        self.assertEqual(len(inst.particles), 3)
+        self.assertEqual(
+            [p.value_in_unit(dalton) for p in inst.particles], [1., 2, 3.])
+        self.assertTrue(inst.wrapped_object.isVirtualSite(2))
+        self.assertEqual(inst.virtualSites.keys(), [2])
+
     def testSystem(self):
         base_inst = openmm.System()
         inst = adapter.System(base_inst)
@@ -228,40 +243,85 @@ class TestWrappedClasses(unittest.TestCase):
 
         self.assertEqual(len(inst.globalParameters), 0)
         inst.globalParameters.append(('jon', 0))
-        print inst.globalParameters
         self.assertEqual(len(inst.globalParameters), 1)
         self.assertEqual(inst.globalParameters[0], ('jon', 0))
         inst.globalParameters[0] = ('chris', 1)
 
-        
-        # self.assertRaises(Exception,lambda : inst.forces[0])
+    def testPlatform(self):
+        # where is getPlatformByName?
+        base_inst = openmm.Platform.getPlatformByName('CPU')
+        inst = adapter.Platform(base_inst)
+        attrs_to_check = [
+            'findPlatform',
+            'defaultPluginsDirectory',
+            'name',
+            'platforms',
+            # 'getPlatformByName', # don't know why this is absent
+            'getPropertyValue',
+            'setPropertyValue',
+            'propertyDefaults',
+            'loadPluginLibrary',
+            'loadPluginsFromDirectory',
+            'registerPlatform',
+            'supportsDoublePrecision',
+            'supportsKernels'
+        ]
+        self.inst_test(inst, attrs_to_check)
+        self.assertEqual(inst.propertyDefaults.keys(), ['CpuThreads'])
+        self.assertEqual(inst.propertyDefaults['CpuThreads'],
+                         base_inst.getPropertyDefaultValue('CpuThreads'))
+        inst.propertyDefaults['CpuThreads'] = '1'
+        self.assertEqual(inst.propertyDefaults['CpuThreads'], '1')
 
-    # def testMonkeyTyping(self):
+    def testAmoebaMultipoleForce(self):
+        base_inst = openmm.AmoebaMultipoleForce()
+        inst = adapter.AmoebaMultipoleForce(base_inst)
+        attrs_to_check = [
+            'multipoles',
+            'AEwald',
+            'covalentMaps',
+            'cutoffDistance',
+            'getElectrostaticPotential',
+            'ewaldErrorTolerance',
+            'extrapolationCoefficients',
+            'forceGroup',
+            'getInducedDipoles',
+            'mutualInducedMaxIterations',
+            'mutualInducedTargetEpsilon',
+            'nonbondedMethod',
+            'getPMEParametersInContext',
+            'pmeBSplineOrder',
+            'pmeGridDimensions',
+            'polarizationType',
+            'updateParametersInContext',
+            'usesPeriodicBoundaryConditions',
+        ]
+        self.inst_test(inst, attrs_to_check)
 
-    #     prmtop = openmm.app.AmberPrmtopFile('prot_lig1.prmtop')
-    #     prmcrd = openmm.app.AmberInpcrdFile('prot_lig1.prmcrd')
+        self.assertEqual(len(inst.multipoles), 0)
+        inst.multipoles.append((0., (0.,)*3, (0.,)*9, 0, 0, 0, 0, 0, 0, 0,))
+        self.assertEqual(len(inst.multipoles), 1)
+        self.assertEqual(len(inst.covalentMaps), 1)
+        self.assertEqual(inst.covalentMaps.keys(), [0])
+        self.assertEqual(
+            inst.covalentMaps[0],
+            base_inst.getCovalentMaps(0))
+        inst.covalentMaps[0] = ((1,),) * 8
+        self.assertEqual(
+            inst.covalentMaps[0], ((1,),) * 8)
+        with self.assertRaises(TypeError):
+            inst.covalentMaps[0] = ((1,),) * 7
 
-    #     residues = list(prmtop.topology.residues())
-    #     base_system = prmtop.createSystem(constraints=openmm.app.HBonds,
-    #                                       removeCMMotion=True)
-    #     system = adapter.System(base_system)
-    #     hbf = system.forces[0]
-    #     nbf = system.forces[3]
-
-    #     self.assertIsInstance(hbf, adapter.HarmonicBondForce)
-    #     self.assertIsInstance(nbf, adapter.NonbondedForce)
-    #     # print(system)
-    #     # print(system.__class__.__name__)
-    #     # print(system.this)
-
-# #particles # need virtual site tests
-# wrapped.particles
-# wrapped.particles[0]
-# wrapped.particles[1] = 0.0
-# wrapped.particles.append(1.0)
-# vs = openmm.TwoParticleAverageSite(0, 1, 0.5, 0.5)
-# wrapped.particles.append((1.0, vs))
-# for p in wrapped.particles: pass
+    def testTwoParticleAverageSite(self):
+        base_inst = openmm.TwoParticleAverageSite(2, 3, 0.2, 0.8)
+        inst = adapter.TwoParticleAverageSite(base_inst)
+        attrs_to_check = ['particles']
+        self.inst_test(inst, attrs_to_check)
+        self.assertEqual(len(inst.particles), 2)
+        self.assertEqual(inst.particles[0], (2, 0.2))
+        self.assertEqual(inst.particles[1], (3, 0.8))
+        with self.assertRaises(AttributeError):
+            inst.particles[0] = (0, 0.5)
 
 if __name__ == '__main__':
     unittest.main()
