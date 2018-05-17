@@ -10,26 +10,15 @@ from simtk.unit import dalton, radian
 
 # TODO
 
-# Test DictWrapper on objects that already contains items, e.g. a system object
-# with virtual sites already created when wrapped.
-
 # Unit tests for wrapper objects
 
 class TestWrappedClasses(unittest.TestCase):
     def inst_test(self, inst, attrs):
-        # for attr in inst.__class__.__dict__:
-        #     self.assertNotIn('get', attr,
-        #                      'Attribute %s starts with get' % attr)
         all_attrs = dir(inst)
         for attr in attrs:
             self.assertTrue(hasattr(inst, attr),
                             msg='Unable to find attribute "%s"' % attr)
             all_attrs.pop(all_attrs.index(attr))
-
-        # for attr in all_attrs:
-        #     if not attr.startswith('_'):
-        #         raise Exception('Found unexpected non-magic method %s' % attr)
-            
 
     def assignValues(self, inst, attr, val1, val2=None):
         setattr(inst, attr, val1)
@@ -39,8 +28,7 @@ class TestWrappedClasses(unittest.TestCase):
             self.assertEqual(getattr(inst, attr), val2)
 
     def testNonbondedForce(self):
-        base_inst = openmm.NonbondedForce()
-        inst = adapter.NonbondedForce(base_inst)
+        inst = adapter.NonbondedForce()
 
         attrs_to_check = ['CutoffNonPeriodic',
                           'CutoffPeriodic',
@@ -99,8 +87,7 @@ class TestWrappedClasses(unittest.TestCase):
         and can be accessed or added to as required
         """
 
-        base_inst = openmm.HarmonicBondForce()
-        inst = adapter.HarmonicBondForce(base_inst)
+        inst = adapter.HarmonicBondForce()
         attrs_to_check = ['bonds',
                           'forceGroup',
                           'updateParametersInContext',
@@ -129,8 +116,7 @@ class TestWrappedClasses(unittest.TestCase):
         and can be accessed or added to as required
         """
 
-        base_inst = openmm.HarmonicAngleForce()
-        inst = adapter.HarmonicAngleForce(base_inst)
+        inst = adapter.HarmonicAngleForce()
         attrs_to_check = ['angles',
                           'forceGroup',
                           'updateParametersInContext',
@@ -160,7 +146,7 @@ class TestWrappedClasses(unittest.TestCase):
         base_inst.addParticle(3.)
         vs = openmm.TwoParticleAverageSite(0, 1, 0.5, 0.5)
         base_inst.setVirtualSite(2, vs)
-        inst = adapter.System(base_inst)
+        inst = adapter.System.Wrap(base_inst)
 
         self.assertEqual(len(inst.particles), 3)
         self.assertEqual(
@@ -169,8 +155,7 @@ class TestWrappedClasses(unittest.TestCase):
         self.assertEqual(inst.virtualSites.keys(), [2])
 
     def testSystem(self):
-        base_inst = openmm.System()
-        inst = adapter.System(base_inst)
+        inst = adapter.System()
 
         attrs_to_check = ['constraints',
                           'particles',
@@ -191,6 +176,7 @@ class TestWrappedClasses(unittest.TestCase):
 
         self.assertEqual(len(inst.constraints), 0)
         inst.constraints.append((0, 1, 1. * nanometer))
+
         self.assertEqual(inst.constraints[0],
                          [0, 1, 1. * nanometer])
         self.assertEqual(len(inst.constraints), 1)
@@ -198,8 +184,7 @@ class TestWrappedClasses(unittest.TestCase):
         self.assertEqual(inst.constraints[0],
                          [0, 1, 2. * nanometer])
 
-        base_hbf = openmm.HarmonicBondForce()
-        hbf = adapter.HarmonicBondForce(base_hbf)
+        hbf = adapter.HarmonicBondForce()
         self.assertEqual(len(inst.forces), 0)
         inst.forces.append(hbf)
         self.assertTrue(isinstance(inst.forces[0], adapter.HarmonicBondForce))
@@ -209,18 +194,17 @@ class TestWrappedClasses(unittest.TestCase):
 
         # Add a third particle to be a virtual site for the first two
         inst.particles.append((3.,))
-        vs = openmm.TwoParticleAverageSite(0, 1, 0.5, 0.5)
-        wrapped_vs = adapter.TwoParticleAverageSite(vs)
+        vs = adapter.TwoParticleAverageSite(0, 1, 0.5, 0.5)
         self.assertEqual(len(inst.virtualSites), 0)
-        inst.virtualSites[2] = wrapped_vs
+        inst.virtualSites[2] = vs
         self.assertEqual(len(inst.virtualSites), 1)
         self.assertEqual(inst.virtualSites.keys(), [2])
         vs_out = inst.virtualSites[2]
-        self.assertEqual(wrapped_vs.particles, vs_out.particles)
+        self.assertEqual(vs.particles, vs_out.particles)
 
     def testCustomNonbondedForce(self):
-        base_inst = openmm.CustomNonbondedForce('r')
-        inst = adapter.CustomNonbondedForce(base_inst)
+        inst = adapter.CustomNonbondedForce('r')
+        inst.energyFunction
         attrs_to_check = [
             'exclusions',
             'functions',
@@ -240,23 +224,41 @@ class TestWrappedClasses(unittest.TestCase):
             'usesPeriodicBoundaryConditions'
         ]
         self.inst_test(inst, attrs_to_check)
-
         self.assertEqual(len(inst.globalParameters), 0)
         inst.globalParameters.append(('jon', 0))
         self.assertEqual(len(inst.globalParameters), 1)
         self.assertEqual(inst.globalParameters[0], ('jon', 0))
+
         inst.globalParameters[0] = ('chris', 1)
+
+        func_args = (0, 1), 0., 1.
+        tfunc = adapter.Continuous1DFunction(*func_args)
+        inst.tabulatedFunctions.append(('first', tfunc))
+
+        # tabulatedFunctions returns any added function cast as a
+        # TabulatedFunction object
+        name, tfunc = inst.tabulatedFunctions[0]
+        self.assertEqual(name,
+                         inst.wrapped_object.getTabulatedFunctionName(0))
+        self.assertIsInstance(tfunc, adapter.TabulatedFunction)
+
+        # functions returns the parameters associated with
+        # a Continuous1DFunction
+        func = inst.functions[0][1:]
+        self.assertEqual(func,
+                         inst.wrapped_object.getFunctionParameters(0)[1:])
 
     def testPlatform(self):
         # where is getPlatformByName?
-        base_inst = openmm.Platform.getPlatformByName('CPU')
-        inst = adapter.Platform(base_inst)
+        # base_inst = openmm.Platform.getPlatformByName('CPU')
+        self.assertEqual(adapter.Platform.platformsByName.keys(),
+                         ['Reference', 'CPU', 'OpenCL'])
+        inst = adapter.Platform.platformsByName['CPU']
         attrs_to_check = [
             'findPlatform',
             'defaultPluginsDirectory',
             'name',
-            'platforms',
-            # 'getPlatformByName', # don't know why this is absent
+            'platformsByName',
             'getPropertyValue',
             'setPropertyValue',
             'propertyDefaults',
@@ -268,14 +270,14 @@ class TestWrappedClasses(unittest.TestCase):
         ]
         self.inst_test(inst, attrs_to_check)
         self.assertEqual(inst.propertyDefaults.keys(), ['CpuThreads'])
-        self.assertEqual(inst.propertyDefaults['CpuThreads'],
-                         base_inst.getPropertyDefaultValue('CpuThreads'))
+        self.assertEqual(
+            inst.propertyDefaults['CpuThreads'],
+            inst.wrapped_object.getPropertyDefaultValue('CpuThreads'))
         inst.propertyDefaults['CpuThreads'] = '1'
         self.assertEqual(inst.propertyDefaults['CpuThreads'], '1')
 
     def testAmoebaMultipoleForce(self):
-        base_inst = openmm.AmoebaMultipoleForce()
-        inst = adapter.AmoebaMultipoleForce(base_inst)
+        inst = adapter.AmoebaMultipoleForce()
         attrs_to_check = [
             'multipoles',
             'AEwald',
@@ -305,7 +307,7 @@ class TestWrappedClasses(unittest.TestCase):
         self.assertEqual(inst.covalentMaps.keys(), [0])
         self.assertEqual(
             inst.covalentMaps[0],
-            base_inst.getCovalentMaps(0))
+            inst.wrapped_object.getCovalentMaps(0))
         inst.covalentMaps[0] = ((1,),) * 8
         self.assertEqual(
             inst.covalentMaps[0], ((1,),) * 8)
@@ -313,8 +315,7 @@ class TestWrappedClasses(unittest.TestCase):
             inst.covalentMaps[0] = ((1,),) * 7
 
     def testTwoParticleAverageSite(self):
-        base_inst = openmm.TwoParticleAverageSite(2, 3, 0.2, 0.8)
-        inst = adapter.TwoParticleAverageSite(base_inst)
+        inst = adapter.TwoParticleAverageSite(2, 3, 0.2, 0.8)
         attrs_to_check = ['particles']
         self.inst_test(inst, attrs_to_check)
         self.assertEqual(len(inst.particles), 2)
@@ -322,6 +323,16 @@ class TestWrappedClasses(unittest.TestCase):
         self.assertEqual(inst.particles[1], (3, 0.8))
         with self.assertRaises(AttributeError):
             inst.particles[0] = (0, 0.5)
+
+    def testContext(self):
+        prmtop = app.AmberPrmtopFile('../tests/prot_lig1.prmtop')
+        system = prmtop.createSystem()
+        integrator = openmm.VerletIntegrator(0.001)
+        context = openmm.Context(system, integrator)
+        # with self.assertRaises('TypeError'):
+        # adapter.Context(context)
+        adapter.Context.Wrap(context)
+
 
 if __name__ == '__main__':
     unittest.main()

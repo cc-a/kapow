@@ -7,7 +7,10 @@ import sys
 
 # TODO
 
-# Create instances without wrapping 
+# test reload logic
+
+# possible for getters with a getNum and a getXXXName could build a dictwrapper
+
 
 def wrap_method(func):
     """This wrapper provides compatibility by accessing the underlying
@@ -28,10 +31,17 @@ def wrap_method(func):
         # except AttributeError:
         #     pass
         # ret_val = func(*args, **kwargs)
-        try:
-            return class_map[ret_val.__class__](ret_val)
-        except (KeyError, TypeError):
-            return ret_val
+        if isinstance(ret_val, tuple):
+            return type(ret_val)([class_map[type(val)].Wrap(val)
+                                  if type(val) in class_map else val
+                                  for val in ret_val])
+        else:
+            try:
+                tmp = class_map[type(ret_val)].Wrap(ret_val)
+                return tmp
+            except (KeyError, TypeError):
+                # ret_val is not a wrapper object
+                return ret_val
     return wrapper
 
 
@@ -64,138 +74,8 @@ class BaseWrapper(object):
         return ret_val
 
 
-# class ArrayWrapper2(BaseWrapper):
-#     def __init__(self, getter, adder):
-#         self.parent = None
-#         self.values = []
-#         self.getter = getter
-#         self.adder = adder
-
-#     def __get__(self, obj, objtype=None):
-#         try:
-#             self.parent = obj.wrapped_object
-#         except AttributeError:
-#             pass
-#         return self
-
-#     def __getitem__(self, val):
-#         return self.values[val]
-
-#     def append(self, *val):
-#         self.values.append(val)
-#         self._append(self, *val)
-
-#     @wrap_method
-#     def _append(self, *val):
-#         try:
-#             self.adder(self.parent, *val)
-#         except TypeError:
-#             # this causes uninformative error messages
-#             self.adder(self.parent, val)
-
-
-# class ArrayWrapper(BaseWrapper):
-#     """Interface to underlying C++ array mimicing list semantics.
-
-#     Provides a pythonic interface to C++ arrays that must be interacted
-#     with array through getter and setter routines.
-#     Optional adder and remover routines can be used as well.
-#     """
-#     def __init__(self, base, len_, getters, setters=None, adder=None,
-#                  remover=None, member_wrapper=None):
-#         self.parent = None
-#         self.len_ = getattr(base, len_)
-#         try:
-#             len(getter)
-#             self.getter = getter
-#         except TypeError:
-#             self.getter = (getter,)
-
-#         if setter is None:
-#             self.setter = self.default_setter
-#         else:
-#             try:
-#                 len(setter)
-#                 self.setter = setter
-#             except TypeError:
-#                 self.setter = (setter,)
-#         # self.setter = self.default_setter if setter is None else setter
-#         self.adder = self.default_adder if adder is None else adder
-#         self.remover = self.default_remover if remover is None else remover
-#         self.member_wrapper = (self.default_member_wrapper
-#                                if member_wrapper is None else member_wrapper)
-#         if adder:
-#             self.append = self._append
-#         if remover:
-#             self.pop = self._pop
-
-#     @wrap_method
-#     def __getitem__(self, val):
-#         try:
-#             # return self.member_wrapper(
-#             #     self.getter(self.parent, val))
-#             return self.member_wrapper([g(self.parent, val)
-#                                         for g in self.getter])
-#         except TypeError:
-#             return self.member_wrapper(
-#                 *self.getter(self.parent, val))
-
-#     def __setitem__(self, val, args):
-#         try:
-#             # return self.setter(self.parent, val, *args)
-#             for s in self.setter:
-#                 s(self.parent, val, *args)
-#             return
-#         except TypeError:
-#             pass
-
-#         try:
-#             for s, arg in zip(self.setter, args):
-#                 s(self.parent, val, arg)
-#             return
-#         except TypeError:
-#             pass
-
-#         self.setter[0](self.parent, val, args)
-
-#     def __len__(self):
-#         return self.len_(self.parent)
-
-#     def __iter__(self):
-#         for i in xrange(len(self)):
-#             yield self[i]
-#         raise StopIteration
-
-#     @wrap_method
-#     def _append(self, *val):
-#         try:
-#             self.adder(self.parent, *val)
-#         except TypeError:
-#             # this causes uninformative error messages
-#             self.adder(self.parent, val)
-
-#     def _pop(self, index):
-#         val = self[index]
-#         self.remover(self.parent, index)
-#         return val
-
-#     def __get__(self, obj, objtype=None):
-#         try:
-#             self.parent = obj.wrapped_object
-#         except AttributeError:
-#             pass
-#         return self
-
-#     def __set__(self, *args):
-#         raise AttributeError('Attribute is read-only')
-
-#     def __repr__(self):
-#         try:
-#             return "<Wrapped C-array containing %d objects>" % len(self)
-#         except TypeError:
-#             return "<C-array Wrapper>"
-
 def print_args(func):
+    """For debugging"""
     def wrapped(*args):
         print args
         return func(*args)
@@ -209,29 +89,47 @@ class ArrayWrapper(BaseWrapper):
     with array through getter and setter routines.
     Optional adder and remover routines can be used as well.
     """
-    def __init__(self, base, len_, getters, setters=[], adder=[],
-                 remover=[], member_wrapper=[]):
+    def __init__(self, base, len_, getters, setters=[], adder=None,
+                 remover=None, member_wrapper=[]):
         self.parent = None
         self.len_ = getattr(base, len_)
         self.member_wrapper = None
 
-        if adder == []:
+        if adder is None:
             self.adder = self.default_adder
         else:
-            self.adder = getattr(base, adder[0])
+            self.adder = wrap_method(getattr(base, adder))
             # record the order in which arguments occur in the adder
             # so that we can make sure that the order of getters and
             # setters matches
-            spec = inspect.getargspec(self.adder)
+            spec = inspect.getargspec(getattr(base, adder))
             args = spec.args[1:]  # + spec.kwargs
             # if args == []:
             #     args = ()
             # self.member_wrapper = namedtuple(len_[6:-1], args)
 
-        if adder != [] and len(getters) > 1:
-            self.getters = [getattr(base, getter) for arg in args
-                            for getter in getters
-                            if arg.lower() in getter.lower()]
+        if len(getters) == 0:
+            raise ValueError('At least one getter function must be provided')
+
+        if adder is not None and len(getters) > 1:
+            # build getter list such that getters occur in the order
+            # matching the adder argument list
+            self.getters = []
+            for arg in args:
+                tmp = [getter for getter in getters
+                       if arg.lower() in getter.lower()]
+                try:
+                    attrname = sorted(tmp, key=lambda x: len(x))[0]
+                    self.getters.append(getattr(base, attrname))
+                except IndexError:
+                    raise
+
+                # print arg, 'tmp', tmp
+
+            # self.getters = [getattr(base, getter) for arg in args
+            #                 for getter in getters
+            #                 if arg.lower() in getter.lower()]
+            # print args, self.getters
         else:
             self.getters = [getattr(base, getter) for getter in getters]
 
@@ -244,10 +142,10 @@ class ArrayWrapper(BaseWrapper):
             else:
                 self.setters = [getattr(base, setter) for setter in setters]
 
-        if remover == []:
+        if remover is None:
             self.remover = self.default_remover
         else:
-            self.remover = getattr(base, remover[0])
+            self.remover = getattr(base, remover)
 
         self.member_wrapper = self.default_member_wrapper \
             if self.member_wrapper is None \
@@ -267,7 +165,9 @@ class ArrayWrapper(BaseWrapper):
             #     self.getter(self.parent, val))
         # print [g(self.parent, val)
         #        for g in self.getters]
-        
+        if val > len(self) - 1:
+            raise IndexError('Array index out of range')
+
         return self.member_wrapper(tuple(g(self.parent, val)
                                          for g in self.getters))
         # except TypeError:
@@ -300,7 +200,7 @@ class ArrayWrapper(BaseWrapper):
             yield self[i]
         raise StopIteration
 
-    @wrap_method
+    # @wrap_method
     def _append(self, val):
         try:
             self.adder(self.parent, *val)
@@ -370,7 +270,7 @@ class ValueWrapper(BaseWrapper, property):
 
 class DictWrapper(BaseWrapper, property):
     def __init__(self, fget=None, fset=None, fdel=None, doc=None,
-                 frange=None, ffilter=None):
+                 frange=None, ffilter=lambda x, y=None: True):
         self.parent = None
         self.member_wrapper = self.default_member_wrapper
         property.__init__(self, fget, fset, fdel, doc)
@@ -381,6 +281,9 @@ class DictWrapper(BaseWrapper, property):
     def __getitem__(self, key):
         try:
             return self.member_wrapper(self.fget(self.parent, key))
+        except TypeError:
+            #static methods
+            return self.member_wrapper(self.fget(key))
         except Exception as err:
             raise KeyError(err)
 
@@ -392,10 +295,19 @@ class DictWrapper(BaseWrapper, property):
         return type(self)(self.fget, fset, self.fdel, self.__doc__,
                           self.frange, self.ffilter)
 
+    def ranger(self, frange):
+        return type(self)(self.fget, self.fset, self.fdel, self.__doc__,
+                          frange, self.ffilter)
+
     def keys(self):
         if self.frange and self.ffilter:
-            return [val for val in self.frange(self.parent)
-                    if self.ffilter(self.parent, val)]
+            try:
+                return [val for val in self.frange(self.parent)
+                        if self.ffilter(self.parent, val)]
+            except TypeError:
+                # staticmethods
+                return [val for val in self.frange()
+                        if self.ffilter(val)]
         else:
             raise NotImplementedError(
                 'cannot do without frange and ffilter yet')
@@ -416,12 +328,33 @@ class DictWrapper(BaseWrapper, property):
         return len(self.keys())
 
     def __get__(self, obj, objtype=None):
-        self.parent = obj.wrapped_object
+        # Exception block allows staticmethods that don't require
+        # a parent object
+        try:
+            self.parent = obj.wrapped_object
+        except AttributeError:
+            pass
         return self
 
     def __set__(self, *args):
         raise AttributeError('Attribute is read-only')
 
+
+def create_init_function(cls):
+    def __init__(self, *args, **kwargs):
+        if kwargs.get('create_wrapped', True):
+            self.wrapped_object = cls(*args, **kwargs)
+        else:
+            self.wrapped_object = None
+    return __init__
+
+
+def create_wrap_function(cls):
+    def Wrap(inst):
+        wrapper = class_map[cls](create_wrapped=False)
+        wrapper.wrapped_object = inst
+        return wrapper
+    return Wrap
 
 # def init(self, inst):
 #     self.wrapped_object = inst
@@ -457,7 +390,8 @@ class Test(type):
     def __new__(mcs, name, bases, attrs):
 
         if '__init__' not in attrs:
-            attrs['__init__'] = init
+            attrs['__init__'] = create_init_function(bases[0])
+        attrs['Wrap'] = staticmethod(create_wrap_function(bases[0]))
 
         attrs_to_add = {}
         for base_class in bases[0].__mro__[:-1]:
@@ -467,6 +401,7 @@ class Test(type):
             attrs_to_add.pop(method)
         for method in attrs['preserve']:
             attrs_to_add.pop(method)
+            attrs[method] = getattr(bases[0], method)
 
         all_array_roots = [attr[6:-1]
                            for attr in attrs_to_add.keys()
@@ -474,8 +409,11 @@ class Test(type):
 
         array_getters = {}
         for root in all_array_roots:
-            array_getters[root] = [attr for attr in attrs_to_add.keys()
-                                   if 'get' + root in attr]
+            array_getters[root] = [
+                attr for attr in attrs_to_add.keys()
+                if 'get' + root in attr ]  # and
+                # isinstance(bases[0].__dict__[attr], staticmethod)]
+                # inspect.getargspec(getattr(bases[0], attr)).args[0] == 'self']
 
         array_setters = {}
         for root in all_array_roots:
@@ -484,35 +422,41 @@ class Test(type):
 
         array_adders = {}
         for root in all_array_roots:
-            # try:
-            array_adders[root] = [attr for attr in attrs_to_add.keys()
-                                  if 'add' + root in attr]
-            # except IndexError:
-            #     array_adders[root] = None
+            try:
+                array_adders[root] = [attr for attr in attrs_to_add.keys()
+                                      if 'add' + root in attr][0]
+            except IndexError:
+                array_adders[root] = None
 
         array_removers = {}
         for root in all_array_roots:
-            # try:
-            array_removers[root] = [attr for attr in attrs_to_add.keys()
-                                    if 'remove' + root in attr]
-            # except IndexError:
-            #     array_removers[root] = None
+            try:
+                array_removers[root] = [attr for attr in attrs_to_add.keys()
+                                        if 'remove' + root in attr][0]
+            except IndexError:
+                array_removers[root] = None
 
         for root in all_array_roots:
             method_name = root[0].lower() + root[1:] + 's'
-            attrs[method_name] = ArrayWrapper(
-                bases[0],
-                len_='getNum%ss' % root,
-                getters=array_getters[root],
-                setters=array_setters[root],
-                adder=array_adders[root],
-                remover=array_removers[root])
-        used_methods = set(method for method_type in (array_adders,
-                                                      array_removers,
+            try:
+                attrs[method_name] = ArrayWrapper(
+                    bases[0],
+                    len_='getNum%ss' % root,
+                    getters=array_getters[root],
+                    setters=array_setters[root],
+                    adder=array_adders[root],
+                    remover=array_removers[root])
+            except ValueError:
+                # no getters were found that go along with this array
+                pass
+                
+        used_methods = set(method for method_type in (
                                                       array_getters,
                                                       array_setters)
                            for methods in method_type.values()
                            for method in methods)
+        used_methods.update(array_adders.values())
+        used_methods.update(array_removers.values())
         used_methods.update('getNum%ss' % root for root in all_array_roots)
 
         # used_methods = set(method for methods in array_adders.values()
@@ -564,9 +508,6 @@ class Test(type):
             if attr not in used_methods and not attr.startswith('__'):
                 attrs[attr] = attrs_to_add[attr]
 
-        for attr in attrs['preserve']:
-            attrs[attr] = getattr(bases[0], attr)
-
         attrs.pop('exclude')
         attrs.pop('preserve')
         return type.__new__(mcs, name, (), attrs)
@@ -577,8 +518,6 @@ class System(openmm.System):
     exclude = ['getForces', 'getVirtualSite',
                'setVirtualSite', 'isVirtualSite']
     preserve = []
-    # def __init__(self, inst):
-    #     self.wrapped_object = inst
 
     @partial(DictWrapper, ffilter=openmm.System.isVirtualSite,
              frange=lambda x: xrange(openmm.System.getNumParticles(x)))
@@ -592,11 +531,11 @@ class System(openmm.System):
 
 class Platform(openmm.Platform):
     __metaclass__ = Test
-    exclude = ['getPropertyDefaultValue', 'setPropertyDefaultValue']
+    exclude = ['getPropertyDefaultValue', 'setPropertyDefaultValue',
+               'getNumPlatforms', 'getPlatform', 'getPlatformByName']
     preserve = ['getPropertyValue', 'setPropertyValue']
 
-    @partial(DictWrapper, ffilter=lambda x, y: True,
-             frange=lambda x: openmm.Platform.getPropertyNames(x))
+    @DictWrapper
     def propertyDefaults(self, key):
         return openmm.Platform.getPropertyDefaultValue(self, key)
 
@@ -604,16 +543,25 @@ class Platform(openmm.Platform):
     def propertyDefaults(self, key, value):
         return openmm.Platform.setPropertyDefaultValue(self, key, value)
 
+    propertyDefaults = propertyDefaults.ranger(
+        openmm.Platform.getPropertyNames)
+
+    @DictWrapper
+    def platformsByName(key):
+        return openmm.Platform.getPlatformByName(key)
+
+    @platformsByName.ranger
+    def platformsByName():
+        return [openmm.Platform.getPlatform(i).getName()
+                for i in xrange(openmm.Platform.getNumPlatforms())]
+
 
 class AmoebaMultipoleForce(openmm.AmoebaMultipoleForce):
     __metaclass__ = Test
     exclude = ['getCovalentMap', 'setCovalentMap', 'getCovalentMaps']
     preserve = []
 
-    @partial(
-        DictWrapper, ffilter=lambda x, y: True,
-        frange=lambda x: xrange(
-            openmm.AmoebaMultipoleForce.getNumMultipoles(x)))
+    @DictWrapper
     def covalentMaps(self, key):
         return openmm.AmoebaMultipoleForce.getCovalentMaps(self, key)
 
@@ -623,6 +571,10 @@ class AmoebaMultipoleForce(openmm.AmoebaMultipoleForce):
             raise TypeError('Covalent Map must be a tuple of length 8')
         for i, val in enumerate(value):
             openmm.AmoebaMultipoleForce.setCovalentMap(self, key, i, val)
+
+    @covalentMaps.ranger
+    def covalentMaps(self):
+        return xrange(openmm.AmoebaMultipoleForce.getNumMultipoles(self))
 
 
 class TwoParticleAverageSite(openmm.TwoParticleAverageSite):
@@ -638,29 +590,31 @@ class TwoParticleAverageSite(openmm.TwoParticleAverageSite):
 exclusions = defaultdict(
     lambda: [],
     {'System': ['getForces'],  # convenience function that is not needed
-                # 'getVirtualSite',
-                # 'setVirtualSite'],  # index, value pair
-     # 'AmoebaMultipoleForce': ['getCovalentMap', # (index, typeid), value pair
-     #                          'setCovalentMap'], # also getCovalentMaps
-     'Context': [
-         # 'getParameter',
-         # 'setParameter', # name, value pair, also getParameters
-         # 'getState'
-     ],
-     'CustomCentroidBondForce': ['getNumGroupsPerBond'], # name mangling
-     'CustomCompoundBondForce': ['getNumParticlesPerBond'], # name mangling
-     'CustomManyParticleForce': ['getNumParticlesPerSet', # name mangling
-                                 'getTypeFilter'], # index, value pair
-     'Platform': [
-         # 'getPropertyDefaultValue',
-         'getPropertyValue'
-     ]}) # name, value pair
+     'CustomCentroidBondForce': ['getNumGroupsPerBond'],  # name mangling
+     'CustomCompoundBondForce': ['getNumParticlesPerBond'],  # name mangling
+     'CustomManyParticleForce': ['getNumParticlesPerSet',  # name mangling
+                                 'getTypeFilter'],  # index, value pair
+     'Platform': ['getPropertyValue']})
+
+skip = [
+    'RPMDIntegrator',
+    'CustomIntegrator',
+    'DualAMDIntegrator',
+    'MTSIntegrator',
+    'AMDForceGroupIntegrator',
+    'AMDIntegrator',
+    'AmoebaTorsionTorsionForce',
+    'AmoebaVdwForce'
+]
 
 module = sys.modules[__name__]
 class_map = {}
 for name in [n for n in dir(openmm) if inspect.isclass(getattr(openmm, n))]:
+    if name in skip:
+        continue
     # does this logic cause problems for reloads?
     if getattr(module, name, None) is None:
+        print name
         openmm_class = getattr(openmm, name)
         new_class = Test(name,
                          [openmm_class],
@@ -682,19 +636,14 @@ for name in [n for n in dir(openmm) if inspect.isclass(getattr(openmm, n))]:
 #     #     setter=(openmm.CustomNonbondedForce.setF))
 
 
-prmtop = app.AmberPrmtopFile('../tests/prot_lig1.prmtop')
-prmcrd = app.AmberInpcrdFile('../tests/prot_lig1.prmcrd')
+# prmtop = app.AmberPrmtopFile('../tests/prot_lig1.prmtop')
+# prmcrd = app.AmberInpcrdFile('../tests/prot_lig1.prmcrd')
 
-from simtk.unit import picoseconds
-system = prmtop.createSystem()
-# vs = openmm.TwoParticleAverageSite(0, 1, 0.5, 0.5)
-# system.setVirtualSite(0, vs)
-# print id(vs), id(system.getVirtualSite(0))
+# from simtk.unit import picoseconds
+# system = prmtop.createSystem()
+# integrator = openmm.VerletIntegrator(0.001 * picoseconds)
+# context = openmm.Context(system, integrator)
 
-# wrapped = System(system)
-integrator = openmm.VerletIntegrator(0.001 * picoseconds)
-context = openmm.Context(system, integrator)
-wrapped = Context(context)
 
 # residues = list(prmtop.topology.residues())
 
@@ -728,21 +677,6 @@ wrapped = Context(context)
 # base = openmm.CustomNonbondedForce('r')
 # cnbf = CustomNonbondedForce(base)
 
-# tfunc = openmm.Continuous1DFunction((0,1), 0., 1.)
-
-# base.addTabulatedFunction('first', tfunc)
-# base.addFunction('secend', (0, 1), 0, 1)
-
-# cnbf.globalParameters.append(('jon', 0))
-# print cnbf.globalParameters[0]
-# print len(cnbf.globalParameters), cnbf.globalParameters[0]
-# cnbf.globalParameters[0] = ('chris', 1)
-# print len(cnbf.globalParameters), cnbf.globalParameters[0]
-
-# cnbf.perParticleParameters.append(('jon',))
-# cnbf.particles.append(())
-# print cnbf.particles[0]
-# cnbf.particles.append(([1],))
-# print cnbf.particles[1]
-
-
+# cnbf = openmm.CustomNonbondedForce('r')
+# cnbf.addFunction('a', (0, 1, 2), 0, 1)
+# print cnbf.getNumFunctions()
