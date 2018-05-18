@@ -329,9 +329,12 @@ class TestWrappedClasses(unittest.TestCase):
         system = prmtop.createSystem()
         integrator = openmm.VerletIntegrator(0.001)
         context = openmm.Context(system, integrator)
-        # with self.assertRaises('TypeError'):
-        # adapter.Context(context)
         adapter.Context.Wrap(context)
+
+    # def testDoc(self):
+    #     hf = adapter.HarmonicBondForce()
+    #     print hf.bonds
+    #     print help(hf.bonds)
 
 
 if __name__ == '__main__':
