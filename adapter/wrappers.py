@@ -1,3 +1,5 @@
+from collections import namedtuple
+from itertools import chain
 import inspect
 from class_map import class_map
 from help_strings import append_help_string, pop_help_string
@@ -17,15 +19,16 @@ def wrap_method(func):
                 new_args.append(arg)
         ret_val = func(*new_args, **kwargs)
 
-        # try:
-        #     args = (args[0].wrapped_object,) + args[1:]
-        # except AttributeError:
-        #     pass
-        # ret_val = func(*args, **kwargs)
         if isinstance(ret_val, tuple):
-            return type(ret_val)([class_map[type(val)].Wrap(val)
-                                  if type(val) in class_map else val
-                                  for val in ret_val])
+            # a tuple subtype i.e. a custom member wrapper or tuple
+            wrapped_values = [class_map[type(val)].Wrap(val)
+                              if type(val) in class_map else val
+                              for val in ret_val]
+            ret_type = type(ret_val)
+            if ret_type is tuple:
+                return type(ret_val)(wrapped_values)
+            else:
+                return type(ret_val)(*wrapped_values)
         else:
             try:
                 tmp = class_map[type(ret_val)].Wrap(ret_val)
@@ -81,10 +84,10 @@ class ArrayWrapper(BaseWrapper):
     Wrapped remover - %s
     """
     def __init__(self, base, len_, getters, setters=[], adder=None,
-                 remover=None, member_wrapper=[]):
+                 remover=None, member_wrapper=None):
         self.parent = None
         self.len_ = getattr(base, len_)
-        self.member_wrapper = None
+        self.member_wrapper = member_wrapper
 
         if adder is None:
             self.adder = self.default_adder
@@ -94,10 +97,19 @@ class ArrayWrapper(BaseWrapper):
             # so that we can make sure that the order of getters and
             # setters matches
             spec = inspect.getargspec(getattr(base, adder))
-            args = spec.args[1:]  # + spec.kwargs
+            if spec.defaults is None:
+                upper = None
+            else:
+                upper = -len(spec.defaults)
+            args = spec.args[1:upper]  # + spec.kwargs
             # if args == []:
             #     args = ()
-            # self.member_wrapper = namedtuple(len_[6:-1], args)
+            if member_wrapper is None:
+                member_name = len_[6:-1]
+                if len(args) == 1 and member_name.lower() == args[0].lower():
+                    self.member_wrapper = self.default_member_wrapper
+                else:
+                    self.member_wrapper = namedtuple(member_name, args)
 
         if len(getters) == 0:
             raise ValueError('At least one getter function must be provided')
@@ -114,13 +126,6 @@ class ArrayWrapper(BaseWrapper):
                     self.getters.append(getattr(base, attrname))
                 except IndexError:
                     raise
-
-                # print arg, 'tmp', tmp
-
-            # self.getters = [getattr(base, getter) for arg in args
-            #                 for getter in getters
-            #                 if arg.lower() in getter.lower()]
-            # print args, self.getters
         else:
             self.getters = [getattr(base, getter) for getter in getters]
 
@@ -142,31 +147,19 @@ class ArrayWrapper(BaseWrapper):
             if self.member_wrapper is None \
             else self.member_wrapper
 
-        # if adder is not None:
-        #     self.append = self._append
-
-        # if remover is not None:
-        #     self.pop = self._pop
-
     @wrap_method
     def __getitem__(self, val):
-        # try:
-            # return self.member_wrapper(
-            #     self.getter(self.parent, val))
-        # print [g(self.parent, val)
-        #        for g in self.getters]
         if val > len(self) - 1:
             raise IndexError('Array index out of range')
 
-        return self.member_wrapper(tuple(g(self.parent, val)
-                                         for g in self.getters))
-        # except TypeError:
-        #     return self.member_wrapper(
-        #         *self.getter(self.parent, val))
+        out = [g(self.parent, val) for g in self.getters]
+        for i in xrange(len(out)):
+            if type(out[i]) != list:
+                out[i] = [out[i]]
+        return self.member_wrapper(*chain(*out))
 
     def __setitem__(self, val, args):
         try:
-            # return self.setter(self.parent, val, *args)
             for s in self.setters:
                 s(self.parent, val, *args)
             return
@@ -190,20 +183,6 @@ class ArrayWrapper(BaseWrapper):
             yield self[i]
         raise StopIteration
 
-    # # @wrap_method
-    # def _append(self, val):
-    #     try:
-    #         self.adder(self.parent, *val)
-    #     except TypeError:
-    #         # print (e)
-    #         # this causes uninformative error messages
-    #         self.adder(self.parent, val)
-
-    # def _pop(self, index):
-    #     val = self[index]
-    #     self.remover(self.parent, index)
-    #     return val
-
     def __get__(self, obj, objtype=None):
         try:
             self.parent = obj.wrapped_object
@@ -219,162 +198,6 @@ class ArrayWrapper(BaseWrapper):
             return "<Wrapped C-array containing %d objects>" % len(self)
         except TypeError:
             return "<C-array Wrapper>"
-
-# class ArrayWrapper(BaseWrapper):
-#     """Interface to underlying C++ array mimicing list semantics.
-
-#     Provides a pythonic interface to C++ arrays that must be interacted
-#     with array through getter and setter routines.
-#     Optional adder and remover routines can be used as well.
-
-#     This object provides a list-like interface that wraps the below
-#     function calls from the corresponding class in openmm:
-#     Wrapped length function - %s
-#     Wrapped getters - %s
-#     Wrapped setters - %s
-#     Wrapped adder - %s
-#     Wrapped remover - %s
-#     """
-#     def __init__(self, base, len_, getters, setters=[], adder=None,
-#                  remover=None, member_wrapper=[]):
-#         self.parent = None
-#         self.len_ = getattr(base, len_)
-#         self.member_wrapper = None
-
-#         if adder is None:
-#             self.adder = self.default_adder
-#         else:
-#             self.adder = wrap_method(getattr(base, adder))
-#             # record the order in which arguments occur in the adder
-#             # so that we can make sure that the order of getters and
-#             # setters matches
-#             spec = inspect.getargspec(getattr(base, adder))
-#             args = spec.args[1:]  # + spec.kwargs
-#             # if args == []:
-#             #     args = ()
-#             # self.member_wrapper = namedtuple(len_[6:-1], args)
-
-#         if len(getters) == 0:
-#             raise ValueError('At least one getter function must be provided')
-
-#         if adder is not None and len(getters) > 1:
-#             # build getter list such that getters occur in the order
-#             # matching the adder argument list
-#             self.getters = []
-#             for arg in args:
-#                 tmp = [getter for getter in getters
-#                        if arg.lower() in getter.lower()]
-#                 try:
-#                     attrname = sorted(tmp, key=lambda x: len(x))[0]
-#                     self.getters.append(getattr(base, attrname))
-#                 except IndexError:
-#                     raise
-
-#                 # print arg, 'tmp', tmp
-
-#             # self.getters = [getattr(base, getter) for arg in args
-#             #                 for getter in getters
-#             #                 if arg.lower() in getter.lower()]
-#             # print args, self.getters
-#         else:
-#             self.getters = [getattr(base, getter) for getter in getters]
-
-#         if setters == []:
-#             self.setter = (self.default_setter,)
-#         else:
-#             if adder != [] and len(setters) > 1:
-#                 self.setters = [getattr(base, setter) for arg in args
-#                                 for setter in setters if arg in setter.lower()]
-#             else:
-#                 self.setters = [getattr(base, setter) for setter in setters]
-
-#         if remover is None:
-#             self.remover = self.default_remover
-#         else:
-#             self.remover = getattr(base, remover)
-
-#         self.member_wrapper = self.default_member_wrapper \
-#             if self.member_wrapper is None \
-#             else self.member_wrapper
-
-#         # self.member_wrapper = self.member_wrapper or self.default_member_wrapper
-#         if adder is not None:
-#             self.append = self._append
-#             # update_wrapper(self.append, self.adder, assigned=('__doc__',))
-#         if remover is not None:
-#             self.pop = self._pop
-
-#     @wrap_method
-#     def __getitem__(self, val):
-#         # try:
-#             # return self.member_wrapper(
-#             #     self.getter(self.parent, val))
-#         # print [g(self.parent, val)
-#         #        for g in self.getters]
-#         if val > len(self) - 1:
-#             raise IndexError('Array index out of range')
-
-#         return self.member_wrapper(tuple(g(self.parent, val)
-#                                          for g in self.getters))
-#         # except TypeError:
-#         #     return self.member_wrapper(
-#         #         *self.getter(self.parent, val))
-
-#     def __setitem__(self, val, args):
-#         try:
-#             # return self.setter(self.parent, val, *args)
-#             for s in self.setters:
-#                 s(self.parent, val, *args)
-#             return
-#         except TypeError:
-#             pass
-
-#         try:
-#             for s, arg in zip(self.setters, args):
-#                 s(self.parent, val, arg)
-#             return
-#         except TypeError:
-#             pass
-
-#         self.setters[0](self.parent, val, args)
-
-#     def __len__(self):
-#         return self.len_(self.parent)
-
-#     def __iter__(self):
-#         for i in xrange(len(self)):
-#             yield self[i]
-#         raise StopIteration
-
-#     # @wrap_method
-#     def _append(self, val):
-#         try:
-#             self.adder(self.parent, *val)
-#         except TypeError:
-#             # print (e)
-#             # this causes uninformative error messages
-#             self.adder(self.parent, val)
-
-#     def _pop(self, index):
-#         val = self[index]
-#         self.remover(self.parent, index)
-#         return val
-
-#     def __get__(self, obj, objtype=None):
-#         try:
-#             self.parent = obj.wrapped_object
-#         except AttributeError:
-#             pass
-#         return self
-
-#     def __set__(self, *args):
-#         raise AttributeError('Attribute is read-only')
-
-#     def __repr__(self):
-#         try:
-#             return "<Wrapped C-array containing %d objects>" % len(self)
-#         except TypeError:
-#             return "<C-array Wrapper>"
 
 
 class ValueWrapper(BaseWrapper, property):
@@ -487,8 +310,9 @@ class DictWrapper(BaseWrapper, property):
 
 
 def build_ArrayWrapper(name, base, len_, getters, setters=[], adder=None,
-                       remover=None, member_wrapper=[]):
-
+                       remover=None, member_wrapper=None):
+    """Create an ArrayWrapper child class with appropriate docstrings
+    and methods according to the passed arguments."""
     def append(self, val):
         try:
             return self.adder(self.parent, *val)

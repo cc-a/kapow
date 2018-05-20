@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+from collections import namedtuple
 import unittest
 import adapter
 from simtk import openmm
@@ -11,6 +12,10 @@ from simtk.unit import dalton, radian
 # TODO
 
 # Unit tests for wrapper objects
+
+# member_wrapper's
+
+# finish documentation
 
 class TestWrappedClasses(unittest.TestCase):
     def inst_test(self, inst, attrs):
@@ -26,6 +31,24 @@ class TestWrappedClasses(unittest.TestCase):
         if val2 is not None:
             setattr(inst, attr, val2)
             self.assertEqual(getattr(inst, attr), val2)
+
+    def assignArray(self, array, val, val2=None):
+        self.assertEqual(len(array), 0)
+        array.append(val)
+        self.assertEqual(len(array), 1)
+        self.assertEqual(
+            array[0],
+            array.member_wrapper(*val)
+        )
+
+        if val2 is not None:
+            array[0] = val2
+            self.assertEqual(
+                array[0],
+                array.member_wrapper(*val2)
+            )
+
+        # array.append(val)
 
     def testNonbondedForce(self):
         inst = adapter.NonbondedForce()
@@ -65,21 +88,18 @@ class TestWrappedClasses(unittest.TestCase):
         self.assignValues(inst, 'useDispersionCorrection', True, False)
         self.assignValues(inst, 'useSwitchingFunction', True, False)
 
-        inst.particles.append((0.0, 0.0, 0.0))
-        self.assertEqual(inst.particles[0],
-                         [0. * elementary_charge,
-                          0. * nanometer,
-                          0. * kilojoule_per_mole])
-        self.assertEqual(inst.particles[0],
-                         inst.wrapped_object.getParticleParameters(0))
-        inst.exceptions.append((1, 2, 0.0, 0.0, 0.0))
-        self.assertEqual(inst.exceptions[0],
-                         [1, 2,
-                          0. * elementary_charge**2,
-                          0. * nanometer,
-                          0. * kilojoule_per_mole])
-        self.assertEqual(inst.exceptions[0],
-                         inst.wrapped_object.getExceptionParameters(0))
+        self.assignArray(inst.particles,
+                       (0. * elementary_charge,
+                        0. * nanometer,
+                        0. * kilojoule_per_mole),
+                       (1. * elementary_charge,
+                        1. * nanometer,
+                        1. * kilojoule_per_mole))
+        self.assignArray(inst.exceptions,
+                       (0, 0, 0. * elementary_charge**2,
+                        0. * nanometer, 0. * kilojoule_per_mole),
+                       (1, 1, 1. * elementary_charge**2,
+                        1. * nanometer, 1. * kilojoule_per_mole))
 
     def testHarmonicBondForce(self):
         """A very comprehensive test for a very simpler class,
@@ -93,14 +113,9 @@ class TestWrappedClasses(unittest.TestCase):
                           'updateParametersInContext',
                           'usesPeriodicBoundaryConditions']
         self.inst_test(inst, attrs_to_check)
-
-        inst.bonds.append((0, 1, 0. * nanometer,
-                          0. * kilojoule_per_mole / nanometer**2))
-        self.assertEqual(inst.bonds[0],
-                         [0, 1, 0. * nanometer,
-                          0. * kilojoule_per_mole / nanometer**2])
-        self.assertEqual(inst.bonds[0],
-                         inst.wrapped_object.getBondParameters(0))
+        self.assignArray(
+            inst.bonds,
+            (0, 1, 0. * nanometer, 0. * kilojoule_per_mole / nanometer**2))
 
         inst.forceGroup = 2
         self.assertEqual(inst.forceGroup, 2)
@@ -122,14 +137,10 @@ class TestWrappedClasses(unittest.TestCase):
                           'updateParametersInContext',
                           'usesPeriodicBoundaryConditions']
         self.inst_test(inst, attrs_to_check)
-
-        inst.angles.append((0, 1, 2, 0. * radian,
-                            0. * kilojoule_per_mole / radian**2))
-        self.assertEqual(inst.angles[0],
-                         [0, 1, 2, 0. * radian,
-                          0. * kilojoule_per_mole / radian**2])
-        self.assertEqual(inst.angles[0],
-                         inst.wrapped_object.getAngleParameters(0))
+        self.assignArray(
+            inst.angles,
+            (0, 0, 0, 0. * radian, 0. * kilojoule_per_mole / radian**2),
+            (1, 1, 1, 1. * radian, 1. * kilojoule_per_mole / radian**2))
 
         inst.forceGroup = 2
         self.assertEqual(inst.forceGroup, 2)
@@ -150,7 +161,8 @@ class TestWrappedClasses(unittest.TestCase):
 
         self.assertEqual(len(inst.particles), 3)
         self.assertEqual(
-            [p.value_in_unit(dalton) for p in inst.particles], [1., 2, 3.])
+            [p.mass.value_in_unit(dalton) for p in inst.particles],
+            [1., 2, 3.])
         self.assertTrue(inst.wrapped_object.isVirtualSite(2))
         self.assertEqual(inst.virtualSites.keys(), [2])
 
@@ -164,42 +176,46 @@ class TestWrappedClasses(unittest.TestCase):
                           'virtualSites',
                           'usesPeriodicBoundaryConditions']
         self.inst_test(inst, attrs_to_check)
+        self.assignArray(inst.particles, (1 * dalton,), (2 * dalton,))
+        self.assertIsInstance(inst.particles[0], inst.particles.member_wrapper)
+        # inst.particles.append((3.,))
+        # self.assertEqual(len(inst.particles), 2)
 
-        self.assertEqual(len(inst.particles), 0)
-        inst.particles.append((1.,))
-        inst.particles.append((2.,))
-        self.assertEqual(len(inst.particles), 2)
-        self.assertEqual(inst.particles[0], 1. * dalton)
-        self.assertEqual(inst.particles[1], 2. * dalton)
-        inst.particles[0] = 3.
-        self.assertEqual(inst.particles[0], 3. * dalton)
+        # self.assertEqual(inst.particles[0], 1. * dalton)
+        # self.assertEqual(inst.particles[1], 2. * dalton)
+        # inst.particles[0] = 3.
+        # self.assertEqual(inst.particles[0], 3. * dalton)
 
-        self.assertEqual(len(inst.constraints), 0)
-        inst.constraints.append((0, 1, 1. * nanometer))
+        self.assignArray(inst.constraints,
+                       (0, 0, 0. * nanometer),
+                       (1, 1, 1. * nanometer))
+        # self.assertEqual(len(inst.constraints), 0)
+        # inst.constraints.append((0, 1, 1. * nanometer))
 
-        self.assertEqual(inst.constraints[0],
-                         [0, 1, 1. * nanometer])
-        self.assertEqual(len(inst.constraints), 1)
-        inst.constraints[0] = (0, 1, 2. * nanometer)
-        self.assertEqual(inst.constraints[0],
-                         [0, 1, 2. * nanometer])
+        # self.assertEqual(inst.constraints[0],
+        #                  [0, 1, 1. * nanometer])
+        # self.assertEqual(len(inst.constraints), 1)
+        # inst.constraints[0] = (0, 1, 2. * nanometer)
+        # self.assertEqual(inst.constraints[0],
+        #                  [0, 1, 2. * nanometer])
 
         hbf = adapter.HarmonicBondForce()
         self.assertEqual(len(inst.forces), 0)
         inst.forces.append(hbf)
-        self.assertTrue(isinstance(inst.forces[0], adapter.HarmonicBondForce))
+        # this is not wrapped by a namedtuple
+        self.assertIsInstance(inst.forces[0],
+                              adapter.HarmonicBondForce)
         self.assertEqual(len(inst.forces), 1)
         inst.forces.pop(0)
         self.assertEqual(len(inst.forces), 0)
 
-        # Add a third particle to be a virtual site for the first two
-        inst.particles.append((3.,))
+        # Add two particles  be a virtual site for the first two
         vs = adapter.TwoParticleAverageSite(0, 1, 0.5, 0.5)
         self.assertEqual(len(inst.virtualSites), 0)
-        inst.virtualSites[2] = vs
+        inst.virtualSites[0] = inst.virtualSites.member_wrapper(vs)
         self.assertEqual(len(inst.virtualSites), 1)
-        self.assertEqual(inst.virtualSites.keys(), [2])
-        vs_out = inst.virtualSites[2]
+        self.assertEqual(inst.virtualSites.keys(), [0])
+        vs_out = inst.virtualSites[0]
         self.assertEqual(vs.particles, vs_out.particles)
 
     def testCustomNonbondedForce(self):
@@ -244,7 +260,7 @@ class TestWrappedClasses(unittest.TestCase):
 
         # functions returns the parameters associated with
         # a Continuous1DFunction
-        func = inst.functions[0][1:]
+        func = list(inst.functions[0][1:])
         self.assertEqual(func,
                          inst.wrapped_object.getFunctionParameters(0)[1:])
 
