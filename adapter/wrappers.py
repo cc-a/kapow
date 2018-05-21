@@ -3,7 +3,8 @@ from functools import update_wrapper
 from itertools import chain
 import inspect
 from class_map import class_map
-from help_strings import append_help_string, pop_help_string
+from help_strings import append_help_string, pop_help_string, array_help_string
+from help_strings import dict_help_string
 
 
 def wrap_method(func):
@@ -350,9 +351,15 @@ def build_ArrayWrapper(name, base, len_, getters, setters=[], adder=None,
             remover_method, remover_method.__doc__)
         attrs['pop'] = pop
 
-    # attrs['member_wrapper'] = default_member_wrapper
-    attrs['__doc__'] = "This is a docstring."
+    attrs['__doc__'] = array_help_string.format(
+        base, len_, getters, setters, adder, remover)
 
     cls = type(name, (ArrayWrapper,), attrs)
-
     return cls(base, len_, getters, setters, adder, remover, member_wrapper)
+
+
+def build_DictWrapper(name, fget=None, fset=None, fdel=None, doc=None,
+                      frange=None, ffilter=lambda x, y=None: True):
+    attrs = {'__doc__': dict_help_string.format()}
+    cls = type(name, (DictWrapper,), attrs)
+    return cls(fget, fset, fdel, doc, frange, ffilter)

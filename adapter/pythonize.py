@@ -1,9 +1,10 @@
 import inspect
-from .wrappers import ArrayWrapper, DictWrapper, ValueWrapper, build_ArrayWrapper
+from .wrappers import ArrayWrapper, DictWrapper, ValueWrapper, build_ArrayWrapper, build_DictWrapper, wrap_method
 from class_map import class_map
 
 
 def create_init_function(cls):
+    @wrap_method
     def __init__(self, *args, **kwargs):
         if kwargs.get('create_wrapped', True):
             self.wrapped_object = cls(*args, **kwargs)
@@ -138,11 +139,19 @@ class Pythonize(type):
                             getattr(bases[0], attr))
                         if arg_spec.defaults is None or \
                            len(arg_spec.args) == 2:
-                            attrs[method_name + 's'] = DictWrapper(
-                                bases[0],
-                                attr,
-                                setter)
-                            used_methods.update((attr, setter))
+                            # this code never actually gets run I think
+                            # dw = DictWrapper(
+                            #     bases[0],
+                            #     attr,
+                            #     setter,
+                            #     doc='hehehehehe')
+                            dw = build_DictWrapper(
+                                method_name, getattr(bases[0], attr),
+                                getattr(bases[0], setter))
+                            # dw.__dict__['__doc__'] = 'hehehehehe'
+                            # dw.__doc___
+                            attrs[method_name + 's'] = dw
+                            # used_methods.update((attr, setter))
                 else:
                     try:
                         attrs[method_name] = ValueWrapper(

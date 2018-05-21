@@ -7,14 +7,13 @@ import sys
 from .pythonize import Pythonize
 from .wrappers import ArrayWrapper, DictWrapper
 from class_map import class_map
+import app
 
 # TODO
 
 # test reload logic
 
 # possible for getters with a getNum and a getXXXName could build a dictwrapper
-
-# app contents
 
 
 def print_args(func):
@@ -23,6 +22,24 @@ def print_args(func):
         print args
         return func(*args)
     return wrapped
+
+
+class Context(openmm.Context):
+    __metaclass__ = Pythonize
+    exclude = ['getParameter', 'setParameter', 'getParameters']
+    preserve = []
+
+    @DictWrapper
+    def parameters(self, key):
+        return openmm.Context.getParameter(self, key)
+
+    @parameters.setter
+    def parameters(self, key, val):
+        return openmm.Context.setParameter(self, key, val)
+
+    @parameters.ranger
+    def parameters(self):
+        return openmm.Context.getParameters(self)
 
 
 class System(openmm.System):

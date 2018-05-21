@@ -341,11 +341,15 @@ class TestWrappedClasses(unittest.TestCase):
             inst.particles[0] = (0, 0.5)
 
     def testContext(self):
-        prmtop = app.AmberPrmtopFile('../tests/prot_lig1.prmtop')
+        """This test checks for a basic level of suitability
+        in combining app classes with openmm classes"""
+        prmtop = adapter.app.AmberPrmtopFile('../tests/prot_lig1.prmtop')
         system = prmtop.createSystem()
-        integrator = openmm.VerletIntegrator(0.001)
-        context = openmm.Context(system, integrator)
-        adapter.Context.Wrap(context)
+
+        self.assertIsInstance(system, adapter.System)
+        integrator = adapter.VerletIntegrator(0.001)
+        context = adapter.Context(system, integrator)
+
 
     # def testDoc(self):
     #     hf = adapter.HarmonicBondForce()
