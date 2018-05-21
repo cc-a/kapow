@@ -1,4 +1,5 @@
 from collections import namedtuple
+from functools import update_wrapper
 from itertools import chain
 import inspect
 from class_map import class_map
@@ -307,6 +308,17 @@ class DictWrapper(BaseWrapper, property):
 
     def __set__(self, *args):
         raise AttributeError('Attribute is read-only')
+
+
+class ClassMethodWrapper(object):
+    def __init__(self, cls_method):
+        self.cls_method = cls_method
+
+    def __get__(self, obj, objtype=None):
+        func = self.cls_method.__get__(obj, objtype)
+        wrapped = wrap_method(func)
+        update_wrapper(wrapped, func)
+        return wrapped
 
 
 def build_ArrayWrapper(name, base, len_, getters, setters=[], adder=None,

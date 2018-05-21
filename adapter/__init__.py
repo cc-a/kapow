@@ -1,11 +1,11 @@
 from simtk import openmm
 # from simtk.openmm import app
-from functools import partial, update_wrapper
+from functools import partial
 from collections import namedtuple, defaultdict
 import inspect
 import sys
 from .pythonize import Pythonize
-from .wrappers import ArrayWrapper, DictWrapper, ValueWrapper
+from .wrappers import ArrayWrapper, DictWrapper
 from class_map import class_map
 
 # TODO
@@ -13,6 +13,8 @@ from class_map import class_map
 # test reload logic
 
 # possible for getters with a getNum and a getXXXName could build a dictwrapper
+
+# app contents
 
 
 def print_args(func):
@@ -129,8 +131,6 @@ for name in [n for n in dir(openmm) if inspect.isclass(getattr(openmm, n))]:
                               [openmm_class],
                               {'exclude': exclusions[name], 'preserve': []})
         setattr(module, name, new_class)
-    else:
-        print 'skipping', name
     class_map[getattr(openmm, name)] = getattr(module, name)
 
 
