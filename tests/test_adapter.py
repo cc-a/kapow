@@ -1,9 +1,7 @@
 #!/usr/bin/env python2
-from collections import namedtuple
 import unittest
 import adapter
 from simtk import openmm
-from simtk.openmm import app
 
 from simtk.unit import nanometer, elementary_charge, kilojoule_per_mole
 from simtk.unit import dalton, radian
@@ -13,9 +11,7 @@ from simtk.unit import dalton, radian
 
 # Unit tests for wrapper objects
 
-# member_wrapper's
-
-# finish documentation
+# finish documentation!!!
 
 class TestWrappedClasses(unittest.TestCase):
     def inst_test(self, inst, attrs):
@@ -47,8 +43,6 @@ class TestWrappedClasses(unittest.TestCase):
                 array[0],
                 array.member_wrapper(*val2)
             )
-
-        # array.append(val)
 
     def testNonbondedForce(self):
         inst = adapter.NonbondedForce()
@@ -178,26 +172,10 @@ class TestWrappedClasses(unittest.TestCase):
         self.inst_test(inst, attrs_to_check)
         self.assignArray(inst.particles, (1 * dalton,), (2 * dalton,))
         self.assertIsInstance(inst.particles[0], inst.particles.member_wrapper)
-        # inst.particles.append((3.,))
-        # self.assertEqual(len(inst.particles), 2)
-
-        # self.assertEqual(inst.particles[0], 1. * dalton)
-        # self.assertEqual(inst.particles[1], 2. * dalton)
-        # inst.particles[0] = 3.
-        # self.assertEqual(inst.particles[0], 3. * dalton)
 
         self.assignArray(inst.constraints,
-                       (0, 0, 0. * nanometer),
-                       (1, 1, 1. * nanometer))
-        # self.assertEqual(len(inst.constraints), 0)
-        # inst.constraints.append((0, 1, 1. * nanometer))
-
-        # self.assertEqual(inst.constraints[0],
-        #                  [0, 1, 1. * nanometer])
-        # self.assertEqual(len(inst.constraints), 1)
-        # inst.constraints[0] = (0, 1, 2. * nanometer)
-        # self.assertEqual(inst.constraints[0],
-        #                  [0, 1, 2. * nanometer])
+                         (0, 0, 0. * nanometer),
+                         (1, 1, 1. * nanometer))
 
         hbf = adapter.HarmonicBondForce()
         self.assertEqual(len(inst.forces), 0)
@@ -209,7 +187,7 @@ class TestWrappedClasses(unittest.TestCase):
         inst.forces.pop(0)
         self.assertEqual(len(inst.forces), 0)
 
-        # Add two particles  be a virtual site for the first two
+        # Add two particles to be a virtual site for the first two
         vs = adapter.TwoParticleAverageSite(0, 1, 0.5, 0.5)
         self.assertEqual(len(inst.virtualSites), 0)
         inst.virtualSites[0] = inst.virtualSites.member_wrapper(vs)
@@ -265,8 +243,6 @@ class TestWrappedClasses(unittest.TestCase):
                          inst.wrapped_object.getFunctionParameters(0)[1:])
 
     def testPlatform(self):
-        # where is getPlatformByName?
-        # base_inst = openmm.Platform.getPlatformByName('CPU')
         self.assertEqual(adapter.Platform.platformsByName.keys(),
                          ['Reference', 'CPU', 'OpenCL'])
         inst = adapter.Platform.platformsByName['CPU']
@@ -349,13 +325,6 @@ class TestWrappedClasses(unittest.TestCase):
         self.assertIsInstance(system, adapter.System)
         integrator = adapter.VerletIntegrator(0.001)
         context = adapter.Context(system, integrator)
-
-
-    # def testDoc(self):
-    #     hf = adapter.HarmonicBondForce()
-    #     print hf.bonds
-    #     print help(hf.bonds)
-
 
 if __name__ == '__main__':
     unittest.main()

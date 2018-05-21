@@ -15,6 +15,10 @@ import app
 
 # possible for getters with a getNum and a getXXXName could build a dictwrapper
 
+# name mangling
+
+# what is going on with the integrators?
+
 
 def print_args(func):
     """For debugging"""
@@ -149,23 +153,3 @@ for name in [n for n in dir(openmm) if inspect.isclass(getattr(openmm, n))]:
                               {'exclude': exclusions[name], 'preserve': []})
         setattr(module, name, new_class)
     class_map[getattr(openmm, name)] = getattr(module, name)
-
-
-# class CustomNonbondedForce(openmm.CustomNonbondedForce):
-#     __metaclass__ = Pythonize
-#     exclude = ()
-#     # tabulatedFunctions = ArrayWrapper(
-#     #     len_=openmm.CustomNonbondedForce.getNumFunctions
-#     #     getter=(openmm.CustomNonbondedForce.getTabulatedFunction,
-#     #             openmm.CustomNonbondedForce.getFunctionParameters,
-#     #             openmm.CustomNonbondedForce.getTabulatedFunctionName),
-#     #     setter=(openmm.CustomNonbondedForce.setF))
-
-
-# prmtop = app.AmberPrmtopFile('../tests/prot_lig1.prmtop')
-# prmcrd = app.AmberInpcrdFile('../tests/prot_lig1.prmcrd')
-
-# from simtk.unit import picoseconds
-# system = prmtop.createSystem()
-# integrator = openmm.VerletIntegrator(0.001 * picoseconds)
-# context = openmm.Context(system, integrator)

@@ -1,5 +1,6 @@
 import inspect
-from .wrappers import ArrayWrapper, DictWrapper, ValueWrapper, build_ArrayWrapper, build_DictWrapper, wrap_method
+from .wrappers import build_ArrayWrapper, build_DictWrapper
+from .wrappers import ValueWrapper, wrap_method
 from class_map import class_map
 
 
@@ -54,9 +55,7 @@ class Pythonize(type):
         for root in all_array_roots:
             array_getters[root] = [
                 attr for attr in attrs_to_add.keys()
-                if 'get' + root in attr]  # and
-                # isinstance(bases[0].__dict__[attr], staticmethod)]
-                # inspect.getargspec(getattr(bases[0], attr)).args[0] == 'self']
+                if 'get' + root in attr]
 
         array_setters = {}
         for root in all_array_roots:
@@ -85,18 +84,8 @@ class Pythonize(type):
                 args = ('getNum%ss' % root, array_getters[root],
                         array_setters[root], array_adders[root],
                         array_removers[root])
-                # new_class = type(
-                #     'tmpName', (ArrayWrapper,),
-                #     {'__doc__': ArrayWrapper.__doc__ % args})
                 attrs[method_name] = build_ArrayWrapper(method_name,
                                                         bases[0], *args)
-                # attrs[method_name] = ArrayWrapper(
-                #     bases[0],
-                #     len_='getNum%ss' % root,
-                #     getters=array_getters[root],
-                #     setters=array_setters[root],
-                #     adder=array_adders[root],
-                #     remover=array_removers[root])
             except ValueError:
                 # no getters were found that go along with this array
                 pass
@@ -109,15 +98,6 @@ class Pythonize(type):
         used_methods.update(array_adders.values())
         used_methods.update(array_removers.values())
         used_methods.update('getNum%ss' % root for root in all_array_roots)
-
-        # used_methods = set(method for methods in array_adders.values()
-        #                    for method in methods)
-        # used_methods.update(method for methods in array_removers.values()
-        #                     for method in methods)
-        # used_methods.update(method for methods in array_getters.values()
-        #                     for method in methods)
-        # used_methods.update(method for methods in array_setters.values()
-        #                     for method in methods)
 
         for attr in attrs_to_add:
             if attr.startswith('get') and attr not in used_methods:
@@ -139,19 +119,10 @@ class Pythonize(type):
                             getattr(bases[0], attr))
                         if arg_spec.defaults is None or \
                            len(arg_spec.args) == 2:
-                            # this code never actually gets run I think
-                            # dw = DictWrapper(
-                            #     bases[0],
-                            #     attr,
-                            #     setter,
-                            #     doc='hehehehehe')
                             dw = build_DictWrapper(
                                 method_name, getattr(bases[0], attr),
                                 getattr(bases[0], setter))
-                            # dw.__dict__['__doc__'] = 'hehehehehe'
-                            # dw.__doc___
                             attrs[method_name + 's'] = dw
-                            # used_methods.update((attr, setter))
                 else:
                     try:
                         attrs[method_name] = ValueWrapper(
