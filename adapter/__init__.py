@@ -1,13 +1,14 @@
 from simtk import openmm
 # from simtk.openmm import app
 from functools import partial
+from six import with_metaclass
 from collections import namedtuple, defaultdict
 import inspect
 import sys
 from .pythonize import Pythonize
-from .wrappers import ArrayWrapper, DictWrapper, build_ArrayWrapper
-from class_map import class_map
-import app
+from .wrappers import DictWrapper, ValueWrapper, build_ArrayWrapper
+from .class_map import class_map
+from . import app
 
 # TODO
 
@@ -15,21 +16,18 @@ import app
 
 # possible for getters with a getNum and a getXXXName could build a dictwrapper
 
-# name mangling
-
 # what is going on with the integrators?
 
 
 def print_args(func):
     """For debugging"""
     def wrapped(*args):
-        print args
+        print(args)
         return func(*args)
     return wrapped
 
 
-class Context(openmm.Context):
-    __metaclass__ = Pythonize
+class Context(with_metaclass(Pythonize, openmm.Context)):
     exclude = ['getParameter', 'setParameter', 'getParameters']
     preserve = []
 
@@ -46,14 +44,13 @@ class Context(openmm.Context):
         return openmm.Context.getParameters(self)
 
 
-class System(openmm.System):
-    __metaclass__ = Pythonize
+class System(with_metaclass(Pythonize, openmm.System)):
     exclude = ['getForces', 'getVirtualSite',
                'setVirtualSite', 'isVirtualSite']
     preserve = []
 
     @partial(DictWrapper, ffilter=openmm.System.isVirtualSite,
-             frange=lambda x: xrange(openmm.System.getNumParticles(x)))
+             frange=lambda x: range(openmm.System.getNumParticles(x)))
     def virtualSites(self, key):
         return openmm.System.getVirtualSite(self, key)
 
@@ -62,8 +59,7 @@ class System(openmm.System):
         return openmm.System.setVirtualSite(self, key, value)
 
 
-class Platform(openmm.Platform):
-    __metaclass__ = Pythonize
+class Platform(with_metaclass(Pythonize, openmm.Platform)):
     exclude = ['getPropertyDefaultValue', 'setPropertyDefaultValue',
                'getNumPlatforms', 'getPlatform', 'getPlatformByName']
     preserve = ['getPropertyValue', 'setPropertyValue']
@@ -86,11 +82,10 @@ class Platform(openmm.Platform):
     @platformsByName.ranger
     def platformsByName():
         return [openmm.Platform.getPlatform(i).getName()
-                for i in xrange(openmm.Platform.getNumPlatforms())]
+                for i in range(openmm.Platform.getNumPlatforms())]
 
 
-class AmoebaMultipoleForce(openmm.AmoebaMultipoleForce):
-    __metaclass__ = Pythonize
+class AmoebaMultipoleForce(with_metaclass(Pythonize, openmm.AmoebaMultipoleForce)):
     exclude = ['getCovalentMap', 'setCovalentMap', 'getCovalentMaps']
     preserve = []
 
@@ -107,11 +102,10 @@ class AmoebaMultipoleForce(openmm.AmoebaMultipoleForce):
 
     @covalentMaps.ranger
     def covalentMaps(self):
-        return xrange(openmm.AmoebaMultipoleForce.getNumMultipoles(self))
+        return range(openmm.AmoebaMultipoleForce.getNumMultipoles(self))
 
 
-class TwoParticleAverageSite(openmm.TwoParticleAverageSite):
-    __metaclass__ = Pythonize
+class TwoParticleAverageSite(with_metaclass(Pythonize, openmm.TwoParticleAverageSite)):
     exclude = ['getNumParticles', 'getParticle', 'getWeight']
     preserve = []
     particles = build_ArrayWrapper(
@@ -122,14 +116,35 @@ class TwoParticleAverageSite(openmm.TwoParticleAverageSite):
         member_wrapper=namedtuple('Particle', ('index', 'weight')))
 
 
+class CustomCentroidBondForce(with_metaclass(Pythonize, openmm.CustomCentroidBondForce)):
+    exclude = ['getNumGroupsPerBond']
+    preserve = []
+    numGroupsPerBond = ValueWrapper(
+        openmm.CustomCentroidBondForce, 'getNumGroupsPerBond')
+
+
+class CustomCompoundBondForce(with_metaclass(Pythonize, openmm.CustomCompoundBondForce)):
+    exclude = ['getNumParticlesPerBond']
+    preserve = []
+    numParticlesPerBond = ValueWrapper(
+        openmm.CustomCompoundBondForce, 'getNumParticlesPerBond')
+
+
+class CustomManyParticleForce(with_metaclass(Pythonize, openmm.CustomManyParticleForce)):
+    exclude = ['getNumParticlesPerSet']
+    preserve = []
+    numParticlesPerSet = ValueWrapper(
+        openmm.CustomManyParticleForce, 'getNumParticlesPerSet')
+
+
 exclusions = defaultdict(
     lambda: [],
     {'System': ['getForces'],  # convenience function that is not needed
-     'CustomCentroidBondForce': ['getNumGroupsPerBond'],  # name mangling
-     'CustomCompoundBondForce': ['getNumParticlesPerBond'],  # name mangling
-     'CustomManyParticleForce': ['getNumParticlesPerSet',  # name mangling
-                                 'getTypeFilter'],  # index, value pair
-     'Platform': ['getPropertyValue']})
+     'CustomManyParticleForce': [
+         'getTypeFilter'],  # index, value pair
+     'Platform': ['getPropertyValue'] # should this be a preserve for get and set?
+    } 
+)
 
 skip = [
     'RPMDIntegrator',

@@ -2,9 +2,9 @@ from collections import namedtuple
 from functools import update_wrapper
 from itertools import chain
 import inspect
-from class_map import class_map
-from help_strings import append_help_string, pop_help_string, array_help_string
-from help_strings import dict_help_string
+from .class_map import class_map
+from .help_strings import append_help_string, pop_help_string, array_help_string
+from .help_strings import dict_help_string
 
 
 def wrap_method(func):
@@ -155,7 +155,7 @@ class ArrayWrapper(BaseWrapper):
             raise IndexError('Array index out of range')
 
         out = [g(self.parent, val) for g in self.getters]
-        for i in xrange(len(out)):
+        for i in range(len(out)):
             if type(out[i]) != list:
                 out[i] = [out[i]]
         return self.member_wrapper(*chain(*out))
@@ -181,9 +181,8 @@ class ArrayWrapper(BaseWrapper):
         return self.len_(self.parent)
 
     def __iter__(self):
-        for i in xrange(len(self)):
+        for i in range(len(self)):
             yield self[i]
-        raise StopIteration
 
     def __get__(self, obj, objtype=None):
         try:

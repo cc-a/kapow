@@ -1,6 +1,6 @@
 import inspect
-from class_map import class_map
-from help_strings import class_help_string
+from .class_map import class_map
+from .help_strings import class_help_string
 from .wrappers import build_ArrayWrapper, build_DictWrapper
 from .wrappers import ValueWrapper, wrap_method
 
