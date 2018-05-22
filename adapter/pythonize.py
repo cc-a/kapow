@@ -1,7 +1,8 @@
 import inspect
+from class_map import class_map
+from help_strings import class_help_string
 from .wrappers import build_ArrayWrapper, build_DictWrapper
 from .wrappers import ValueWrapper, wrap_method
-from class_map import class_map
 
 
 def create_init_function(cls):
@@ -138,6 +139,7 @@ class Pythonize(type):
             if attr not in used_methods and not attr.startswith('__'):
                 attrs[attr] = attrs_to_add[attr]
 
+        attrs['__doc__'] = class_help_string.format(bases[0], bases[0].__doc__)
         attrs.pop('exclude')
         attrs.pop('preserve')
         return type.__new__(mcs, name, (), attrs)

@@ -326,5 +326,6 @@ class TestWrappedClasses(unittest.TestCase):
         integrator = adapter.VerletIntegrator(0.001)
         context = adapter.Context(system, integrator)
 
+
 if __name__ == '__main__':
     unittest.main()

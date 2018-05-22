@@ -38,3 +38,14 @@ the effect of removing an element -
 """
 
 dict_help_string = """hehehehehe"""
+
+class_help_string = """This class provides a pythonic wrapper for the openmm base class
+ {0}. 
+
+Wherever possible 'get', 'set' and 'add' methods from the base class have
+been combined into a single interface that provides list-like semantics.
+
+The help string of {0} is provided below -
+
+{1}
+"""

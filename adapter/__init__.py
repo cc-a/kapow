@@ -5,7 +5,7 @@ from collections import namedtuple, defaultdict
 import inspect
 import sys
 from .pythonize import Pythonize
-from .wrappers import ArrayWrapper, DictWrapper
+from .wrappers import ArrayWrapper, DictWrapper, build_ArrayWrapper
 from class_map import class_map
 import app
 
@@ -114,7 +114,8 @@ class TwoParticleAverageSite(openmm.TwoParticleAverageSite):
     __metaclass__ = Pythonize
     exclude = ['getNumParticles', 'getParticle', 'getWeight']
     preserve = []
-    particles = ArrayWrapper(
+    particles = build_ArrayWrapper(
+        'particles',
         openmm.TwoParticleAverageSite,
         'getNumParticles',
         ['getParticle', 'getWeight'],
