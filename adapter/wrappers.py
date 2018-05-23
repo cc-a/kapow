@@ -127,6 +127,7 @@ class ArrayWrapper(BaseWrapper):
                     attrname = sorted(tmp, key=lambda x: len(x))[0]
                     self.getters.append(getattr(base, attrname))
                 except IndexError:
+                    print(tmp, arg, getters)
                     raise
         else:
             self.getters = [getattr(base, getter) for getter in getters]
@@ -240,12 +241,15 @@ class ValueWrapper(BaseWrapper, property):
 
 class DictWrapper(BaseWrapper, property):
     def __init__(self, fget=None, fset=None, fdel=None, doc=None,
-                 frange=None, ffilter=lambda x, y=None: True):
+                 frange=None, ffilter=lambda x, y=None: True, fchange=None,
+                 fadd=None):
         self.parent = None
         self.member_wrapper = self.default_member_wrapper
         property.__init__(self, fget, fset, fdel, doc)
         self.frange = frange
         self.ffilter = ffilter
+        self.fchange = fchange
+        self.fadd = fadd
 
     @wrap_method
     def __getitem__(self, key):
@@ -259,15 +263,21 @@ class DictWrapper(BaseWrapper, property):
 
     @wrap_method
     def __setitem__(self, key, val):
-        self.fset(self.parent, key, val)
+        if key not in self.keys() and self.fadd:
+            # if key is not present and we have an
+            # adder method then use it
+            self.fadd(self.parent, key, val)
+        else:
+            # this may also add new key depending on the setter
+            self.fset(self.parent, key, val)
 
     def setter(self, fset):
         return type(self)(self.fget, fset, self.fdel, self.__doc__,
-                          self.frange, self.ffilter)
+                          self.frange, self.ffilter, self.fchange, self.fadd)
 
     def ranger(self, frange):
         return type(self)(self.fget, self.fset, self.fdel, self.__doc__,
-                          frange, self.ffilter)
+                          frange, self.ffilter, self.fchange, self.fadd)
 
     def keys(self):
         if self.frange and self.ffilter:
@@ -278,6 +288,13 @@ class DictWrapper(BaseWrapper, property):
                 # staticmethods
                 return [val for val in self.frange()
                         if self.ffilter(val)]
+        elif self.frange and self.fchange:
+            try:
+                return [self.fchange(self.parent, val)
+                        for val in self.frange(self.parent)]
+            except TypeError:
+                # staticmethods
+                return [self.fchange(val) for val in self.frange()]
         else:
             raise NotImplementedError(
                 'cannot do without frange and ffilter yet')

@@ -16,7 +16,7 @@ from . import app
 
 # possible for getters with a getNum and a getXXXName could build a dictwrapper
 
-# what is going on with the integrators?
+# Individual metaclass for integrator special cases
 
 
 def print_args(func):
@@ -29,7 +29,6 @@ def print_args(func):
 
 class Context(with_metaclass(Pythonize, openmm.Context)):
     exclude = ['getParameter', 'setParameter', 'getParameters']
-    preserve = []
 
     @DictWrapper
     def parameters(self, key):
@@ -47,7 +46,6 @@ class Context(with_metaclass(Pythonize, openmm.Context)):
 class System(with_metaclass(Pythonize, openmm.System)):
     exclude = ['getForces', 'getVirtualSite',
                'setVirtualSite', 'isVirtualSite']
-    preserve = []
 
     @partial(DictWrapper, ffilter=openmm.System.isVirtualSite,
              frange=lambda x: range(openmm.System.getNumParticles(x)))
@@ -85,9 +83,9 @@ class Platform(with_metaclass(Pythonize, openmm.Platform)):
                 for i in range(openmm.Platform.getNumPlatforms())]
 
 
-class AmoebaMultipoleForce(with_metaclass(Pythonize, openmm.AmoebaMultipoleForce)):
+class AmoebaMultipoleForce(
+        with_metaclass(Pythonize, openmm.AmoebaMultipoleForce)):
     exclude = ['getCovalentMap', 'setCovalentMap', 'getCovalentMaps']
-    preserve = []
 
     @DictWrapper
     def covalentMaps(self, key):
@@ -105,9 +103,9 @@ class AmoebaMultipoleForce(with_metaclass(Pythonize, openmm.AmoebaMultipoleForce
         return range(openmm.AmoebaMultipoleForce.getNumMultipoles(self))
 
 
-class TwoParticleAverageSite(with_metaclass(Pythonize, openmm.TwoParticleAverageSite)):
+class TwoParticleAverageSite(
+        with_metaclass(Pythonize, openmm.TwoParticleAverageSite)):
     exclude = ['getNumParticles', 'getParticle', 'getWeight']
-    preserve = []
     particles = build_ArrayWrapper(
         'particles',
         openmm.TwoParticleAverageSite,
@@ -116,46 +114,253 @@ class TwoParticleAverageSite(with_metaclass(Pythonize, openmm.TwoParticleAverage
         member_wrapper=namedtuple('Particle', ('index', 'weight')))
 
 
-class CustomCentroidBondForce(with_metaclass(Pythonize, openmm.CustomCentroidBondForce)):
+class CustomCentroidBondForce(
+        with_metaclass(Pythonize, openmm.CustomCentroidBondForce)):
     exclude = ['getNumGroupsPerBond']
-    preserve = []
     numGroupsPerBond = ValueWrapper(
         openmm.CustomCentroidBondForce, 'getNumGroupsPerBond')
 
 
-class CustomCompoundBondForce(with_metaclass(Pythonize, openmm.CustomCompoundBondForce)):
+class CustomCompoundBondForce(
+        with_metaclass(Pythonize, openmm.CustomCompoundBondForce)):
     exclude = ['getNumParticlesPerBond']
-    preserve = []
     numParticlesPerBond = ValueWrapper(
         openmm.CustomCompoundBondForce, 'getNumParticlesPerBond')
 
 
-class CustomManyParticleForce(with_metaclass(Pythonize, openmm.CustomManyParticleForce)):
-    exclude = ['getNumParticlesPerSet']
-    preserve = []
+class CustomManyParticleForce(
+        with_metaclass(Pythonize, openmm.CustomManyParticleForce)):
+    exclude = ['getNumParticlesPerSet', 'getTypeFilter']
     numParticlesPerSet = ValueWrapper(
         openmm.CustomManyParticleForce, 'getNumParticlesPerSet')
 
+    typeFilters = build_ArrayWrapper(
+        'typeFilters',
+        openmm.CustomManyParticleForce,
+        'getNumParticlesPerSet',
+        ['getTypeFilter'],
+        ['setTypeFilter']
+    )
 
+
+class CustomIntegrator(
+        with_metaclass(Pythonize, openmm.CustomIntegrator)):
+    exclude = ['getPerDofVariable', 'getPerDofVariableName',
+               'getPerDofVariableByName', 'setPerDofVariableByName',
+               'addPerDofVariable', 'getNumPerDofVariables',
+               'addGlobalVariable', 'getGlobalVariable',
+               'getGlobalVariableName', 'setGlobalVariable',
+               'getGlobalVariableByName', 'setGlobalVariableByName']
+
+    perDofVariables = DictWrapper(
+        getattr(openmm.CustomIntegrator, 'getPerDofVariableByName'),
+        getattr(openmm.CustomIntegrator, 'setPerDofVariableByName'),
+        fdel=None,
+        doc=None,
+        frange=lambda x: xrange(
+            getattr(openmm.CustomIntegrator, 'getNumPerDofVariables')(x)),
+        ffilter=None,
+        fchange=getattr(openmm.CustomIntegrator, 'getPerDofVariableName'),
+        fadd=getattr(openmm.CustomIntegrator, 'addPerDofVariable')
+    )
+
+    globalVariables = DictWrapper(
+        getattr(openmm.CustomIntegrator, 'getGlobalVariableByName'),
+        getattr(openmm.CustomIntegrator, 'setGlobalVariableByName'),
+        fdel=None,
+        doc=None,
+        frange=lambda x: xrange(
+            getattr(openmm.CustomIntegrator, 'getNumGlobalVariables')(x)),
+        ffilter=None,
+        fchange=getattr(openmm.CustomIntegrator, 'getGlobalVariableName'),
+        fadd=getattr(openmm.CustomIntegrator, 'addGlobalVariable')
+    )
+
+
+class DualAMDIntegrator(
+        with_metaclass(Pythonize, openmm.DualAMDIntegrator)):
+    exclude = ['getPerDofVariable', 'getPerDofVariableName',
+               'getPerDofVariableByName', 'setPerDofVariableByName',
+               'addPerDofVariable', 'getNumPerDofVariables',
+               'addGlobalVariable', 'getGlobalVariable',
+               'getGlobalVariableName', 'setGlobalVariable',
+               'getGlobalVariableByName', 'setGlobalVariableByName'
+    ]
+
+    perDofVariables = DictWrapper(
+        getattr(openmm.DualAMDIntegrator, 'getPerDofVariableByName'),
+        getattr(openmm.DualAMDIntegrator, 'setPerDofVariableByName'),
+        fdel=None,
+        doc=None,
+        frange=lambda x: xrange(
+            getattr(openmm.DualAMDIntegrator, 'getNumPerDofVariables')(x)),
+        ffilter=None,
+        fchange=getattr(openmm.DualAMDIntegrator, 'getPerDofVariableName'),
+        fadd=getattr(openmm.DualAMDIntegrator, 'addPerDofVariable')
+    )
+
+    globalVariables = DictWrapper(
+        getattr(openmm.DualAMDIntegrator, 'getGlobalVariableByName'),
+        getattr(openmm.DualAMDIntegrator, 'setGlobalVariableByName'),
+        fdel=None,
+        doc=None,
+        frange=lambda x: xrange(
+            getattr(openmm.DualAMDIntegrator, 'getNumGlobalVariables')(x)),
+        ffilter=None,
+        fchange=getattr(openmm.DualAMDIntegrator, 'getGlobalVariableName'),
+        fadd=getattr(openmm.DualAMDIntegrator, 'addGlobalVariable')
+    )
+
+
+class AMDIntegrator(
+        with_metaclass(Pythonize, openmm.AMDIntegrator)):
+    exclude = ['getPerDofVariable', 'getPerDofVariableName',
+               'getPerDofVariableByName', 'setPerDofVariableByName',
+               'addPerDofVariable', 'getNumPerDofVariables',
+               'addGlobalVariable', 'getGlobalVariable',
+               'getGlobalVariableName', 'setGlobalVariable',
+               'getGlobalVariableByName', 'setGlobalVariableByName'
+    ]
+
+    perDofVariables = DictWrapper(
+        getattr(openmm.AMDIntegrator, 'getPerDofVariableByName'),
+        getattr(openmm.AMDIntegrator, 'setPerDofVariableByName'),
+        fdel=None,
+        doc=None,
+        frange=lambda x: xrange(
+            getattr(openmm.AMDIntegrator, 'getNumPerDofVariables')(x)),
+        ffilter=None,
+        fchange=getattr(openmm.AMDIntegrator, 'getPerDofVariableName'),
+        fadd=getattr(openmm.AMDIntegrator, 'addPerDofVariable')
+    )
+
+    globalVariables = DictWrapper(
+        getattr(openmm.AMDIntegrator, 'getGlobalVariableByName'),
+        getattr(openmm.AMDIntegrator, 'setGlobalVariableByName'),
+        fdel=None,
+        doc=None,
+        frange=lambda x: xrange(
+            getattr(openmm.AMDIntegrator, 'getNumGlobalVariables')(x)),
+        ffilter=None,
+        fchange=getattr(openmm.AMDIntegrator, 'getGlobalVariableName'),
+        fadd=getattr(openmm.AMDIntegrator, 'addGlobalVariable')
+    )
+
+
+class MTSIntegrator(
+        with_metaclass(Pythonize, openmm.MTSIntegrator)):
+    exclude = ['getPerDofVariable', 'getPerDofVariableName',
+               'getPerDofVariableByName', 'setPerDofVariableByName',
+               'addPerDofVariable', 'getNumPerDofVariables',
+               'addGlobalVariable', 'getGlobalVariable',
+               'getGlobalVariableName', 'setGlobalVariable',
+               'getGlobalVariableByName', 'setGlobalVariableByName'
+    ]
+
+    perDofVariables = DictWrapper(
+        getattr(openmm.MTSIntegrator, 'getPerDofVariableByName'),
+        getattr(openmm.MTSIntegrator, 'setPerDofVariableByName'),
+        fdel=None,
+        doc=None,
+        frange=lambda x: xrange(
+            getattr(openmm.MTSIntegrator, 'getNumPerDofVariables')(x)),
+        ffilter=None,
+        fchange=getattr(openmm.MTSIntegrator, 'getPerDofVariableName'),
+        fadd=getattr(openmm.MTSIntegrator, 'addPerDofVariable')
+    )
+
+    globalVariables = DictWrapper(
+        getattr(openmm.MTSIntegrator, 'getGlobalVariableByName'),
+        getattr(openmm.MTSIntegrator, 'setGlobalVariableByName'),
+        fdel=None,
+        doc=None,
+        frange=lambda x: xrange(
+            getattr(openmm.MTSIntegrator, 'getNumGlobalVariables')(x)),
+        ffilter=None,
+        fchange=getattr(openmm.MTSIntegrator, 'getGlobalVariableName'),
+        fadd=getattr(openmm.MTSIntegrator, 'addGlobalVariable')
+    )
+
+    
+class AMDForceGroupIntegrator(
+        with_metaclass(Pythonize, openmm.AMDForceGroupIntegrator)):
+    exclude = ['getPerDofVariable', 'getPerDofVariableName',
+               'getPerDofVariableByName', 'setPerDofVariableByName',
+               'addPerDofVariable', 'getNumPerDofVariables',
+               'addGlobalVariable', 'getGlobalVariable',
+               'getGlobalVariableName', 'setGlobalVariable',
+               'getGlobalVariableByName', 'setGlobalVariableByName'
+    ]
+
+    perDofVariables = DictWrapper(
+        getattr(openmm.AMDForceGroupIntegrator, 'getPerDofVariableByName'),
+        getattr(openmm.AMDForceGroupIntegrator, 'setPerDofVariableByName'),
+        fdel=None,
+        doc=None,
+        frange=lambda x: xrange(
+            getattr(openmm.AMDForceGroupIntegrator,
+                    'getNumPerDofVariables')(x)),
+        ffilter=None,
+        fchange=getattr(openmm.AMDForceGroupIntegrator,
+                        'getPerDofVariableName'),
+        fadd=getattr(openmm.AMDForceGroupIntegrator, 'addPerDofVariable')
+    )
+
+    globalVariables = DictWrapper(
+        getattr(openmm.AMDForceGroupIntegrator, 'getGlobalVariableByName'),
+        getattr(openmm.AMDForceGroupIntegrator, 'setGlobalVariableByName'),
+        fdel=None,
+        doc=None,
+        frange=lambda x: xrange(
+            getattr(openmm.AMDForceGroupIntegrator,
+                    'getNumGlobalVariables')(x)),
+        ffilter=None,
+        fchange=getattr(openmm.AMDForceGroupIntegrator,
+                        'getGlobalVariableName'),
+        fadd=getattr(openmm.AMDForceGroupIntegrator, 'addGlobalVariable')
+    )
+
+
+class AmoebaTorsionTorsionForce(
+        with_metaclass(Pythonize, openmm.AmoebaTorsionTorsionForce)):
+    exclude = ['getNumTorsionTorsionGrids', 'getTorsionTorsionGrid']
+    torsionTorsionGrids = build_ArrayWrapper(
+        'torsionTorsionGrids',
+        openmm.AmoebaTorsionTorsionForce,
+        'getNumTorsionTorsionGrids',
+        ['getTorsionTorsionGrid'],
+        ['setTorsionTorsionGrid']
+    )
+
+
+class AmoebaVdwForce(
+        with_metaclass(Pythonize, openmm.AmoebaVdwForce)):
+    exclude = ['getParticleExclusions', 'setParticleExclusions']
+    exclusions = build_ArrayWrapper(
+        'exclusions',
+        openmm.AmoebaVdwForce,
+        'getNumParticles',
+        ['getParticleExclusions'],
+        ['setParticleExclusions']
+    )
+
+
+# specify methods to be excluded from adapter object
 exclusions = defaultdict(
     lambda: [],
-    {'System': ['getForces'],  # convenience function that is not needed
-     'CustomManyParticleForce': [
-         'getTypeFilter'],  # index, value pair
-     'Platform': ['getPropertyValue'] # should this be a preserve for get and set?
-    } 
+    {
+        'System': ['getForces'],  # convenience function that is not needed
+    }
 )
 
-skip = [
-    'RPMDIntegrator',
-    'CustomIntegrator',
-    'DualAMDIntegrator',
-    'MTSIntegrator',
-    'AMDForceGroupIntegrator',
-    'AMDIntegrator',
-    'AmoebaTorsionTorsionForce',
-    'AmoebaVdwForce'
-]
+# specify methods to be preserved in adapter objects without modification
+preserves = defaultdict(
+    lambda: [],
+    {}
+)
+
+# specify classes to ignore
+skip = []
 
 module = sys.modules[__name__]
 for name in [n for n in dir(openmm) if inspect.isclass(getattr(openmm, n))]:
@@ -166,6 +371,7 @@ for name in [n for n in dir(openmm) if inspect.isclass(getattr(openmm, n))]:
         openmm_class = getattr(openmm, name)
         new_class = Pythonize(name,
                               [openmm_class],
-                              {'exclude': exclusions[name], 'preserve': []})
+                              {'exclude': exclusions[name],
+                               'preserve': preserves[name]})
         setattr(module, name, new_class)
     class_map[getattr(openmm, name)] = getattr(module, name)

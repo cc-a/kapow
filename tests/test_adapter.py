@@ -10,6 +10,10 @@ from simtk.unit import dalton, radian
 
 # Unit tests for wrapper objects
 
+# AmoebaTorsionTorsionForce - the grids are weird
+
+# AmoebaVdwForce - the exclusions are weird
+
 # finish documentation!!!
 
 class TestWrappedClasses(unittest.TestCase):
@@ -41,6 +45,22 @@ class TestWrappedClasses(unittest.TestCase):
             self.assertEqual(
                 array[0],
                 array.member_wrapper(*val2)
+            )
+
+    def assignDict(self, array, key, val, val2=None):
+        self.assertEqual(len(array), 0)
+        array[key] = (val)
+        self.assertEqual(len(array), 1)
+        self.assertEqual(
+            array[key],
+            val
+        )
+
+        if val2 is not None:
+            array[key] = val2
+            self.assertEqual(
+                array[key],
+                val2
             )
 
     def testNonbondedForce(self):
@@ -114,8 +134,8 @@ class TestWrappedClasses(unittest.TestCase):
         self.assertEqual(inst.forceGroup, 2)
         self.assignValues(inst, 'usesSwitchingFunction', True, False)
         # self.assertRaisesRegexp(TypeError,
-        #                         'updateParametersInContext\(\) takes exactly '
-        #                         '2 arguments \(1 given\)',
+        #                         'updateParametersInContext\(\) takes exactly'
+        #                         ' 2 arguments \(1 given\)',
         #                         callable_obj=inst.updateParametersInContext)
 
     def testHarmonicAngleForce(self):
@@ -319,6 +339,85 @@ class TestWrappedClasses(unittest.TestCase):
         self.assertIsInstance(system, adapter.System)
         integrator = adapter.VerletIntegrator(0.001)
         context = adapter.Context(system, integrator)
+
+    def testCustomManyParticleForce(self):
+        cmpf = adapter.CustomManyParticleForce(3, 'r')
+        self.assertEqual(3, cmpf.numParticlesPerSet)
+        self.assertEqual(3, len(cmpf.typeFilters))
+        self.assertEqual(cmpf.typeFilters[0], ())
+        cmpf.typeFilters[0] = (0, 1)
+        self.assertEqual(cmpf.typeFilters[0], (0, 1))
+
+    def testCustomIntegrator(self):
+        inst = adapter.CustomIntegrator(0.002)
+        self.assertEqual(len(inst.perDofVariables), 0)
+        inst.perDofVariables["oldx"] = 1
+        self.assertEqual(len(inst.perDofVariables), 1)
+        self.assertEqual(inst.perDofVariables["oldx"], (1., 1., 1.))
+        inst.perDofVariables["oldx"] = ((2., 2., 2.),)
+
+        self.assignDict(inst.globalVariables, "x", 1, 2)
+
+    def testDualAMDIntegrator(self):
+        # this class starts with some perDofVariables and globalVariables
+        # already assigned
+        inst = adapter.DualAMDIntegrator(0.002, 0, 0., 0., 0., 0.)
+        self.assertEqual(len(inst.perDofVariables), 2)
+        inst.perDofVariables["test"] = 1
+        self.assertEqual(len(inst.perDofVariables), 3)
+        self.assertEqual(inst.perDofVariables["test"], (1., 1., 1.))
+        inst.perDofVariables["test"] = ((2., 2., 2.),)
+
+        self.assertEqual(len(inst.globalVariables), 5)
+        inst.globalVariables["test"] = 1
+        self.assertEqual(len(inst.globalVariables), 6)
+        self.assertEqual(inst.globalVariables["test"], 1.)
+        inst.globalVariables["test"] = 2.
+
+    def testAMDIntegrator(self):
+        # this class starts with some perDofVariables and globalVariables
+        # already assigned
+        inst = adapter.AMDIntegrator(0.002, 0, 0.)
+        self.assertEqual(len(inst.perDofVariables), 1)
+        inst.perDofVariables["test"] = 1
+        self.assertEqual(len(inst.perDofVariables), 2)
+        self.assertEqual(inst.perDofVariables["test"], (1., 1., 1.))
+        inst.perDofVariables["test"] = ((2., 2., 2.),)
+
+        self.assertEqual(len(inst.globalVariables), 2)
+        inst.globalVariables["test"] = 1
+        self.assertEqual(len(inst.globalVariables), 3)
+        self.assertEqual(inst.globalVariables["test"], 1.)
+        inst.globalVariables["test"] = 2.
+
+    def testMTSIntegrator(self):
+        # this class starts with some perDofVariables and globalVariables
+        # already assigned
+        inst = adapter.MTSIntegrator(0.002, [(0, 1), (1, 2)])
+        self.assertEqual(len(inst.perDofVariables), 1)
+        inst.perDofVariables["test"] = 1
+        self.assertEqual(len(inst.perDofVariables), 2)
+        self.assertEqual(inst.perDofVariables["test"], (1., 1., 1.))
+        inst.perDofVariables["test"] = ((2., 2., 2.),)
+
+        self.assignDict(inst.globalVariables, "test", 1., 2.)
+
+    def testAMDForceGroupIntegrator(self):
+        # this class starts with some perDofVariables and globalVariables
+        # already assigned
+        inst = adapter.AMDForceGroupIntegrator(0.002, 0, 0., 0.)
+        self.assertEqual(len(inst.perDofVariables), 2)
+        inst.perDofVariables["test"] = 1
+        self.assertEqual(len(inst.perDofVariables), 3)
+        self.assertEqual(inst.perDofVariables["test"], (1., 1., 1.))
+        inst.perDofVariables["test"] = ((2., 2., 2.),)
+
+        self.assertEqual(len(inst.globalVariables), 3)
+        inst.globalVariables["test"] = 1
+        self.assertEqual(len(inst.globalVariables), 4)
+        self.assertEqual(inst.globalVariables["test"], 1.)
+        inst.globalVariables["test"] = 2.
+
 
 
 if __name__ == '__main__':

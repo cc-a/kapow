@@ -34,6 +34,9 @@ class Pythonize(type):
 
     def __new__(mcs, name, bases, attrs):
 
+        exclude = attrs.pop('exclude', [])
+        preserve = attrs.pop('preserve', [])
+
         if '__init__' not in attrs:
             attrs['__init__'] = create_init_function(bases[0])
         attrs['Wrap'] = staticmethod(create_wrap_function(bases[0]))
@@ -42,9 +45,9 @@ class Pythonize(type):
         for base_class in bases[0].__mro__[:-1]:
             attrs_to_add.update(base_class.__dict__)
 
-        for method in attrs['exclude']:
+        for method in exclude:
             attrs_to_add.pop(method)
-        for method in attrs['preserve']:
+        for method in preserve:
             attrs_to_add.pop(method)
             attrs[method] = getattr(bases[0], method)
 
@@ -140,6 +143,4 @@ class Pythonize(type):
                 attrs[attr] = attrs_to_add[attr]
 
         attrs['__doc__'] = class_help_string.format(bases[0], bases[0].__doc__)
-        attrs.pop('exclude')
-        attrs.pop('preserve')
         return type.__new__(mcs, name, (), attrs)
