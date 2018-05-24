@@ -20,7 +20,7 @@ from . import app
 
 # test against newer openmm version
 
-# State objects - whats going on with them? Properties added in 7.2
+# State objects - whats going on with them?
 
 
 def print_args(func):
@@ -157,27 +157,27 @@ class CustomIntegrator(
                'getGlobalVariableByName', 'setGlobalVariableByName']
 
     perDofVariables = DictWrapper(
-        getattr(openmm.CustomIntegrator, 'getPerDofVariableByName'),
-        getattr(openmm.CustomIntegrator, 'setPerDofVariableByName'),
+        openmm.CustomIntegrator.getPerDofVariableByName,
+        openmm.CustomIntegrator.setPerDofVariableByName,
         fdel=None,
         doc=None,
         frange=lambda x: range(
-            getattr(openmm.CustomIntegrator, 'getNumPerDofVariables')(x)),
+            openmm.CustomIntegrator.getNumPerDofVariables(x)),
         ffilter=None,
-        fchange=getattr(openmm.CustomIntegrator, 'getPerDofVariableName'),
-        fadd=getattr(openmm.CustomIntegrator, 'addPerDofVariable')
+        fchange=openmm.CustomIntegrator.getPerDofVariableName,
+        fadd=openmm.CustomIntegrator.addPerDofVariable
     )
 
     globalVariables = DictWrapper(
-        getattr(openmm.CustomIntegrator, 'getGlobalVariableByName'),
-        getattr(openmm.CustomIntegrator, 'setGlobalVariableByName'),
+        openmm.CustomIntegrator.getGlobalVariableByName,
+        openmm.CustomIntegrator.setGlobalVariableByName,
         fdel=None,
         doc=None,
         frange=lambda x: range(
-            getattr(openmm.CustomIntegrator, 'getNumGlobalVariables')(x)),
+            openmm.CustomIntegrator.getNumGlobalVariables(x)),
         ffilter=None,
-        fchange=getattr(openmm.CustomIntegrator, 'getGlobalVariableName'),
-        fadd=getattr(openmm.CustomIntegrator, 'addGlobalVariable')
+        fchange=openmm.CustomIntegrator.getGlobalVariableName,
+        fadd=openmm.CustomIntegrator.addGlobalVariable
     )
 
 
@@ -188,66 +188,64 @@ class DualAMDIntegrator(
                'addPerDofVariable', 'getNumPerDofVariables',
                'addGlobalVariable', 'getGlobalVariable',
                'getGlobalVariableName', 'setGlobalVariable',
-               'getGlobalVariableByName', 'setGlobalVariableByName'
-    ]
+               'getGlobalVariableByName', 'setGlobalVariableByName']
 
     perDofVariables = DictWrapper(
-        getattr(openmm.DualAMDIntegrator, 'getPerDofVariableByName'),
-        getattr(openmm.DualAMDIntegrator, 'setPerDofVariableByName'),
+        openmm.DualAMDIntegrator.getPerDofVariableByName,
+        openmm.DualAMDIntegrator.setPerDofVariableByName,
         fdel=None,
         doc=None,
         frange=lambda x: range(
-            getattr(openmm.DualAMDIntegrator, 'getNumPerDofVariables')(x)),
+            openmm.DualAMDIntegrator.getNumPerDofVariables(x)),
         ffilter=None,
-        fchange=getattr(openmm.DualAMDIntegrator, 'getPerDofVariableName'),
-        fadd=getattr(openmm.DualAMDIntegrator, 'addPerDofVariable')
+        fchange=openmm.DualAMDIntegrator.getPerDofVariableName,
+        fadd=openmm.DualAMDIntegrator.addPerDofVariable
     )
 
     globalVariables = DictWrapper(
-        getattr(openmm.DualAMDIntegrator, 'getGlobalVariableByName'),
-        getattr(openmm.DualAMDIntegrator, 'setGlobalVariableByName'),
+        openmm.DualAMDIntegrator.getGlobalVariableByName,
+        openmm.DualAMDIntegrator.setGlobalVariableByName,
         fdel=None,
         doc=None,
         frange=lambda x: range(
-            getattr(openmm.DualAMDIntegrator, 'getNumGlobalVariables')(x)),
+            openmm.DualAMDIntegrator.getNumGlobalVariables(x)),
         ffilter=None,
-        fchange=getattr(openmm.DualAMDIntegrator, 'getGlobalVariableName'),
-        fadd=getattr(openmm.DualAMDIntegrator, 'addGlobalVariable')
+        fchange=openmm.DualAMDIntegrator.getGlobalVariableName,
+        fadd=openmm.DualAMDIntegrator.addGlobalVariable
     )
 
 
-class AMDIntegrator(
-        with_metaclass(Pythonize, openmm.AMDIntegrator)):
+class AMDForceGroupIntegrator(
+        with_metaclass(Pythonize, openmm.AMDForceGroupIntegrator)):
     exclude = ['getPerDofVariable', 'getPerDofVariableName',
                'getPerDofVariableByName', 'setPerDofVariableByName',
                'addPerDofVariable', 'getNumPerDofVariables',
                'addGlobalVariable', 'getGlobalVariable',
                'getGlobalVariableName', 'setGlobalVariable',
-               'getGlobalVariableByName', 'setGlobalVariableByName'
-    ]
+               'getGlobalVariableByName', 'setGlobalVariableByName']
 
     perDofVariables = DictWrapper(
-        getattr(openmm.AMDIntegrator, 'getPerDofVariableByName'),
-        getattr(openmm.AMDIntegrator, 'setPerDofVariableByName'),
+        openmm.AMDForceGroupIntegrator.getPerDofVariableByName,
+        openmm.AMDForceGroupIntegrator.setPerDofVariableByName,
         fdel=None,
         doc=None,
         frange=lambda x: range(
-            getattr(openmm.AMDIntegrator, 'getNumPerDofVariables')(x)),
+            openmm.AMDForceGroupIntegrator.getNumPerDofVariables(x)),
         ffilter=None,
-        fchange=getattr(openmm.AMDIntegrator, 'getPerDofVariableName'),
-        fadd=getattr(openmm.AMDIntegrator, 'addPerDofVariable')
+        fchange=openmm.AMDForceGroupIntegrator.getPerDofVariableName,
+        fadd=openmm.AMDForceGroupIntegrator.addPerDofVariable
     )
 
     globalVariables = DictWrapper(
-        getattr(openmm.AMDIntegrator, 'getGlobalVariableByName'),
-        getattr(openmm.AMDIntegrator, 'setGlobalVariableByName'),
+        openmm.AMDForceGroupIntegrator.getGlobalVariableByName,
+        openmm.AMDForceGroupIntegrator.setGlobalVariableByName,
         fdel=None,
         doc=None,
         frange=lambda x: range(
-            getattr(openmm.AMDIntegrator, 'getNumGlobalVariables')(x)),
+            openmm.AMDForceGroupIntegrator.getNumGlobalVariables(x)),
         ffilter=None,
-        fchange=getattr(openmm.AMDIntegrator, 'getGlobalVariableName'),
-        fadd=getattr(openmm.AMDIntegrator, 'addGlobalVariable')
+        fchange=openmm.AMDForceGroupIntegrator.getGlobalVariableName,
+        fadd=openmm.AMDForceGroupIntegrator.addGlobalVariable
     )
 
 
@@ -258,70 +256,64 @@ class MTSIntegrator(
                'addPerDofVariable', 'getNumPerDofVariables',
                'addGlobalVariable', 'getGlobalVariable',
                'getGlobalVariableName', 'setGlobalVariable',
-               'getGlobalVariableByName', 'setGlobalVariableByName'
-    ]
+               'getGlobalVariableByName', 'setGlobalVariableByName']
 
     perDofVariables = DictWrapper(
-        getattr(openmm.MTSIntegrator, 'getPerDofVariableByName'),
-        getattr(openmm.MTSIntegrator, 'setPerDofVariableByName'),
+        openmm.MTSIntegrator.getPerDofVariableByName,
+        openmm.MTSIntegrator.setPerDofVariableByName,
         fdel=None,
         doc=None,
         frange=lambda x: range(
-            getattr(openmm.MTSIntegrator, 'getNumPerDofVariables')(x)),
+            openmm.MTSIntegrator.getNumPerDofVariables(x)),
         ffilter=None,
-        fchange=getattr(openmm.MTSIntegrator, 'getPerDofVariableName'),
-        fadd=getattr(openmm.MTSIntegrator, 'addPerDofVariable')
+        fchange=openmm.MTSIntegrator.getPerDofVariableName,
+        fadd=openmm.MTSIntegrator.addPerDofVariable
     )
 
     globalVariables = DictWrapper(
-        getattr(openmm.MTSIntegrator, 'getGlobalVariableByName'),
-        getattr(openmm.MTSIntegrator, 'setGlobalVariableByName'),
+        openmm.MTSIntegrator.getGlobalVariableByName,
+        openmm.MTSIntegrator.setGlobalVariableByName,
         fdel=None,
         doc=None,
         frange=lambda x: range(
-            getattr(openmm.MTSIntegrator, 'getNumGlobalVariables')(x)),
+            openmm.MTSIntegrator.getNumGlobalVariables(x)),
         ffilter=None,
-        fchange=getattr(openmm.MTSIntegrator, 'getGlobalVariableName'),
-        fadd=getattr(openmm.MTSIntegrator, 'addGlobalVariable')
+        fchange=openmm.MTSIntegrator.getGlobalVariableName,
+        fadd=openmm.MTSIntegrator.addGlobalVariable
     )
 
-    
-class AMDForceGroupIntegrator(
-        with_metaclass(Pythonize, openmm.AMDForceGroupIntegrator)):
+
+class AMDIntegrator(
+        with_metaclass(Pythonize, openmm.AMDIntegrator)):
     exclude = ['getPerDofVariable', 'getPerDofVariableName',
                'getPerDofVariableByName', 'setPerDofVariableByName',
                'addPerDofVariable', 'getNumPerDofVariables',
                'addGlobalVariable', 'getGlobalVariable',
                'getGlobalVariableName', 'setGlobalVariable',
-               'getGlobalVariableByName', 'setGlobalVariableByName'
-    ]
+               'getGlobalVariableByName', 'setGlobalVariableByName']
 
     perDofVariables = DictWrapper(
-        getattr(openmm.AMDForceGroupIntegrator, 'getPerDofVariableByName'),
-        getattr(openmm.AMDForceGroupIntegrator, 'setPerDofVariableByName'),
+        openmm.AMDIntegrator.getPerDofVariableByName,
+        openmm.AMDIntegrator.setPerDofVariableByName,
         fdel=None,
         doc=None,
         frange=lambda x: range(
-            getattr(openmm.AMDForceGroupIntegrator,
-                    'getNumPerDofVariables')(x)),
+            openmm.AMDIntegrator.getNumPerDofVariables(x)),
         ffilter=None,
-        fchange=getattr(openmm.AMDForceGroupIntegrator,
-                        'getPerDofVariableName'),
-        fadd=getattr(openmm.AMDForceGroupIntegrator, 'addPerDofVariable')
+        fchange=openmm.AMDIntegrator.getPerDofVariableName,
+        fadd=openmm.AMDIntegrator.addPerDofVariable
     )
 
     globalVariables = DictWrapper(
-        getattr(openmm.AMDForceGroupIntegrator, 'getGlobalVariableByName'),
-        getattr(openmm.AMDForceGroupIntegrator, 'setGlobalVariableByName'),
+        openmm.AMDIntegrator.getGlobalVariableByName,
+        openmm.AMDIntegrator.setGlobalVariableByName,
         fdel=None,
         doc=None,
         frange=lambda x: range(
-            getattr(openmm.AMDForceGroupIntegrator,
-                    'getNumGlobalVariables')(x)),
+            openmm.AMDIntegrator.getNumGlobalVariables(x)),
         ffilter=None,
-        fchange=getattr(openmm.AMDForceGroupIntegrator,
-                        'getGlobalVariableName'),
-        fadd=getattr(openmm.AMDForceGroupIntegrator, 'addGlobalVariable')
+        fchange=openmm.AMDIntegrator.getGlobalVariableName,
+        fadd=openmm.AMDIntegrator.addGlobalVariable
     )
 
 

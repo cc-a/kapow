@@ -308,6 +308,12 @@ class DictWrapper(BaseWrapper, property):
     def itervalues(self):
         return iter(self.values())
 
+    def items(self):
+        return tuple(zip(self.keys(), self.values()))
+
+    def iteritems(self):
+        return iter(self.items())
+
     def __iter__(self):
         return self.iterkeys()
 
@@ -370,7 +376,7 @@ def build_ArrayWrapper(name, base, len_, getters, setters=[], adder=None,
     attrs['__doc__'] = array_help_string.format(
         base, len_, getters, setters, adder, remover)
 
-    cls = type(name, (ArrayWrapper,), attrs)
+    cls = type('ArrayWrapper', (ArrayWrapper,), attrs)
     return cls(base, len_, getters, setters, adder, remover, member_wrapper)
 
 

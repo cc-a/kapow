@@ -10,7 +10,7 @@ from simtk.unit import dalton, radian
 
 # Unit tests for wrapper objects
 
-# AmoebaTorsionTorsionForce - the grids are weird
+# AmoebaTorsionTorsionForce - the grids are weirdc
 
 # AmoebaVdwForce - the exclusions are weird
 
@@ -397,7 +397,7 @@ class TestWrappedClasses(unittest.TestCase):
     def testMTSIntegrator(self):
         # this class starts with some perDofVariables and globalVariables
         # already assigned
-        inst = adapter.MTSIntegrator(0.002, [(0, 1), (1, 2)])
+        inst = adapter.MTSIntegrator(1, [(0, 1), (1, 2)])
         self.assertEqual(len(inst.perDofVariables), 1)
         inst.perDofVariables["test"] = 1
         self.assertEqual(len(inst.perDofVariables), 2)
@@ -421,7 +421,6 @@ class TestWrappedClasses(unittest.TestCase):
         self.assertEqual(len(inst.globalVariables), 4)
         self.assertEqual(inst.globalVariables["test"], 1.)
         inst.globalVariables["test"] = 2.
-
 
 
 if __name__ == '__main__':
