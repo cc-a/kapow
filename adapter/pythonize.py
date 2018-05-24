@@ -44,7 +44,6 @@ class Pythonize(type):
         attrs_to_add = {}
         for base_class in bases[0].__mro__[:-1]:
             attrs_to_add.update(base_class.__dict__)
-
         for method in exclude:
             attrs_to_add.pop(method)
         for method in preserve:

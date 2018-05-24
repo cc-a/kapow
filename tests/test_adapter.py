@@ -248,7 +248,7 @@ class TestWrappedClasses(unittest.TestCase):
         name, tfunc = inst.tabulatedFunctions[0]
         self.assertEqual(name,
                          inst.wrapped_object.getTabulatedFunctionName(0))
-        self.assertIsInstance(tfunc, adapter.TabulatedFunction)
+        self.assertIsInstance(tfunc, adapter.Continuous1DFunction)
 
         # functions returns the parameters associated with
         # a Continuous1DFunction
@@ -257,8 +257,11 @@ class TestWrappedClasses(unittest.TestCase):
                          inst.wrapped_object.getFunctionParameters(0)[1:])
 
     def testPlatform(self):
-        self.assertEqual(adapter.Platform.platformsByName.keys(),
-                         ['Reference', 'CPU', 'OpenCL'])
+        # self.assertEqual(adapter.Platform.platformsByName.keys(),
+        #                  ['Reference', 'CPU'])
+        keys = adapter.Platform.platformsByName.keys()
+        self.assertIn('Reference', keys)
+        self.assertIn('CPU', keys)
         inst = adapter.Platform.platformsByName['CPU']
         attrs_to_check = [
             'findPlatform',
@@ -275,12 +278,13 @@ class TestWrappedClasses(unittest.TestCase):
             'supportsKernels'
         ]
         self.inst_test(inst, attrs_to_check)
-        self.assertEqual(inst.propertyDefaults.keys(), ['CpuThreads'])
+        self.assertEqual(inst.propertyDefaults.keys(), 
+                         ['Threads', 'DeterministicForces'])
         self.assertEqual(
-            inst.propertyDefaults['CpuThreads'],
-            inst.wrapped_object.getPropertyDefaultValue('CpuThreads'))
-        inst.propertyDefaults['CpuThreads'] = '1'
-        self.assertEqual(inst.propertyDefaults['CpuThreads'], '1')
+            inst.propertyDefaults['Threads'],
+            inst.wrapped_object.getPropertyDefaultValue('Threads'))
+        inst.propertyDefaults['Threads'] = '1'
+        self.assertEqual(inst.propertyDefaults['Threads'], '1')
 
     def testAmoebaMultipoleForce(self):
         inst = adapter.AmoebaMultipoleForce()

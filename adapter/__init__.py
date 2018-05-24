@@ -20,6 +20,8 @@ from . import app
 
 # test against newer openmm version
 
+# State objects - whats going on with them? Properties added in 7.2
+
 
 def print_args(func):
     """For debugging"""
@@ -159,7 +161,7 @@ class CustomIntegrator(
         getattr(openmm.CustomIntegrator, 'setPerDofVariableByName'),
         fdel=None,
         doc=None,
-        frange=lambda x: xrange(
+        frange=lambda x: range(
             getattr(openmm.CustomIntegrator, 'getNumPerDofVariables')(x)),
         ffilter=None,
         fchange=getattr(openmm.CustomIntegrator, 'getPerDofVariableName'),
@@ -171,7 +173,7 @@ class CustomIntegrator(
         getattr(openmm.CustomIntegrator, 'setGlobalVariableByName'),
         fdel=None,
         doc=None,
-        frange=lambda x: xrange(
+        frange=lambda x: range(
             getattr(openmm.CustomIntegrator, 'getNumGlobalVariables')(x)),
         ffilter=None,
         fchange=getattr(openmm.CustomIntegrator, 'getGlobalVariableName'),
@@ -194,7 +196,7 @@ class DualAMDIntegrator(
         getattr(openmm.DualAMDIntegrator, 'setPerDofVariableByName'),
         fdel=None,
         doc=None,
-        frange=lambda x: xrange(
+        frange=lambda x: range(
             getattr(openmm.DualAMDIntegrator, 'getNumPerDofVariables')(x)),
         ffilter=None,
         fchange=getattr(openmm.DualAMDIntegrator, 'getPerDofVariableName'),
@@ -206,7 +208,7 @@ class DualAMDIntegrator(
         getattr(openmm.DualAMDIntegrator, 'setGlobalVariableByName'),
         fdel=None,
         doc=None,
-        frange=lambda x: xrange(
+        frange=lambda x: range(
             getattr(openmm.DualAMDIntegrator, 'getNumGlobalVariables')(x)),
         ffilter=None,
         fchange=getattr(openmm.DualAMDIntegrator, 'getGlobalVariableName'),
@@ -229,7 +231,7 @@ class AMDIntegrator(
         getattr(openmm.AMDIntegrator, 'setPerDofVariableByName'),
         fdel=None,
         doc=None,
-        frange=lambda x: xrange(
+        frange=lambda x: range(
             getattr(openmm.AMDIntegrator, 'getNumPerDofVariables')(x)),
         ffilter=None,
         fchange=getattr(openmm.AMDIntegrator, 'getPerDofVariableName'),
@@ -241,7 +243,7 @@ class AMDIntegrator(
         getattr(openmm.AMDIntegrator, 'setGlobalVariableByName'),
         fdel=None,
         doc=None,
-        frange=lambda x: xrange(
+        frange=lambda x: range(
             getattr(openmm.AMDIntegrator, 'getNumGlobalVariables')(x)),
         ffilter=None,
         fchange=getattr(openmm.AMDIntegrator, 'getGlobalVariableName'),
@@ -264,7 +266,7 @@ class MTSIntegrator(
         getattr(openmm.MTSIntegrator, 'setPerDofVariableByName'),
         fdel=None,
         doc=None,
-        frange=lambda x: xrange(
+        frange=lambda x: range(
             getattr(openmm.MTSIntegrator, 'getNumPerDofVariables')(x)),
         ffilter=None,
         fchange=getattr(openmm.MTSIntegrator, 'getPerDofVariableName'),
@@ -276,7 +278,7 @@ class MTSIntegrator(
         getattr(openmm.MTSIntegrator, 'setGlobalVariableByName'),
         fdel=None,
         doc=None,
-        frange=lambda x: xrange(
+        frange=lambda x: range(
             getattr(openmm.MTSIntegrator, 'getNumGlobalVariables')(x)),
         ffilter=None,
         fchange=getattr(openmm.MTSIntegrator, 'getGlobalVariableName'),
@@ -299,7 +301,7 @@ class AMDForceGroupIntegrator(
         getattr(openmm.AMDForceGroupIntegrator, 'setPerDofVariableByName'),
         fdel=None,
         doc=None,
-        frange=lambda x: xrange(
+        frange=lambda x: range(
             getattr(openmm.AMDForceGroupIntegrator,
                     'getNumPerDofVariables')(x)),
         ffilter=None,
@@ -313,7 +315,7 @@ class AMDForceGroupIntegrator(
         getattr(openmm.AMDForceGroupIntegrator, 'setGlobalVariableByName'),
         fdel=None,
         doc=None,
-        frange=lambda x: xrange(
+        frange=lambda x: range(
             getattr(openmm.AMDForceGroupIntegrator,
                     'getNumGlobalVariables')(x)),
         ffilter=None,
@@ -362,7 +364,9 @@ preserves = defaultdict(
 )
 
 # specify classes to ignore
-skip = []
+skip = [
+    'State'
+]
 
 module = sys.modules[__name__]
 for name in [n for n in dir(openmm) if inspect.isclass(getattr(openmm, n))]:
