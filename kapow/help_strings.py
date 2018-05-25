@@ -1,3 +1,8 @@
+# Copyright (C) 2018 Christopher Cave-Ayland
+# You may use, distribute and modify this code under the terms of the
+# MIT open source license. See https://opensource.org/licenses/MIT if
+# a copy was not provided with this code.
+
 array_help_string = """This object provides a pythonic interface to an underlying C++ array,
 mimicing the semantics of a list. This object has methods and attributes that
 wrap calls to the openmm base class, {0}.
