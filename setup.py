@@ -1,7 +1,7 @@
 from distutils.core import setup
 
-setup(name='openmm_adapter',
+setup(name='kapow',
       version='0.1',
-      packages=['adapter'],
+      packages=['kapow'],
       ext_modules=[]
 )

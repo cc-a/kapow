@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import unittest
-import adapter
+import kapow
 from simtk import openmm
 from simtk.unit import nanometer, elementary_charge, kilojoule_per_mole
 from simtk.unit import dalton, radian
@@ -64,7 +64,7 @@ class TestWrappedClasses(unittest.TestCase):
             )
 
     def testNonbondedForce(self):
-        inst = adapter.NonbondedForce()
+        inst = kapow.NonbondedForce()
 
         attrs_to_check = ['CutoffNonPeriodic',
                           'CutoffPeriodic',
@@ -120,7 +120,7 @@ class TestWrappedClasses(unittest.TestCase):
         and can be accessed or added to as required
         """
 
-        inst = adapter.HarmonicBondForce()
+        inst = kapow.HarmonicBondForce()
         attrs_to_check = ['bonds',
                           'forceGroup',
                           'updateParametersInContext',
@@ -144,7 +144,7 @@ class TestWrappedClasses(unittest.TestCase):
         and can be accessed or added to as required
         """
 
-        inst = adapter.HarmonicAngleForce()
+        inst = kapow.HarmonicAngleForce()
         attrs_to_check = ['angles',
                           'forceGroup',
                           'updateParametersInContext',
@@ -166,7 +166,7 @@ class TestWrappedClasses(unittest.TestCase):
         base_inst.addParticle(3.)
         vs = openmm.TwoParticleAverageSite(0, 1, 0.5, 0.5)
         base_inst.setVirtualSite(2, vs)
-        inst = adapter.System.Wrap(base_inst)
+        inst = kapow.System.Wrap(base_inst)
 
         self.assertEqual(len(inst.particles), 3)
         self.assertEqual(
@@ -176,7 +176,7 @@ class TestWrappedClasses(unittest.TestCase):
         self.assertEqual(inst.virtualSites.keys(), [2])
 
     def testSystem(self):
-        inst = adapter.System()
+        inst = kapow.System()
         attrs_to_check = ['constraints',
                           'particles',
                           'forces',
@@ -191,18 +191,18 @@ class TestWrappedClasses(unittest.TestCase):
                          (0, 0, 0. * nanometer),
                          (1, 1, 1. * nanometer))
 
-        hbf = adapter.HarmonicBondForce()
+        hbf = kapow.HarmonicBondForce()
         self.assertEqual(len(inst.forces), 0)
         inst.forces.append(hbf)
         # this is not wrapped by a namedtuple
         self.assertIsInstance(inst.forces[0],
-                              adapter.HarmonicBondForce)
+                              kapow.HarmonicBondForce)
         self.assertEqual(len(inst.forces), 1)
         inst.forces.pop(0)
         self.assertEqual(len(inst.forces), 0)
 
         # Add two particles to be a virtual site for the first two
-        vs = adapter.TwoParticleAverageSite(0, 1, 0.5, 0.5)
+        vs = kapow.TwoParticleAverageSite(0, 1, 0.5, 0.5)
         self.assertEqual(len(inst.virtualSites), 0)
         inst.virtualSites[0] = inst.virtualSites.member_wrapper(vs)
         self.assertEqual(len(inst.virtualSites), 1)
@@ -211,7 +211,7 @@ class TestWrappedClasses(unittest.TestCase):
         self.assertEqual(vs.particles, vs_out.particles)
 
     def testCustomNonbondedForce(self):
-        inst = adapter.CustomNonbondedForce('r')
+        inst = kapow.CustomNonbondedForce('r')
         inst.energyFunction
         attrs_to_check = [
             'exclusions',
@@ -240,7 +240,7 @@ class TestWrappedClasses(unittest.TestCase):
         inst.globalParameters[0] = ('chris', 1)
 
         func_args = (0, 1), 0., 1.
-        tfunc = adapter.Continuous1DFunction(*func_args)
+        tfunc = kapow.Continuous1DFunction(*func_args)
         inst.tabulatedFunctions.append(('first', tfunc))
 
         # tabulatedFunctions returns any added function cast as a
@@ -248,7 +248,7 @@ class TestWrappedClasses(unittest.TestCase):
         name, tfunc = inst.tabulatedFunctions[0]
         self.assertEqual(name,
                          inst.wrapped_object.getTabulatedFunctionName(0))
-        self.assertIsInstance(tfunc, adapter.Continuous1DFunction)
+        self.assertIsInstance(tfunc, kapow.Continuous1DFunction)
 
         # functions returns the parameters associated with
         # a Continuous1DFunction
@@ -257,12 +257,12 @@ class TestWrappedClasses(unittest.TestCase):
                          inst.wrapped_object.getFunctionParameters(0)[1:])
 
     def testPlatform(self):
-        # self.assertEqual(adapter.Platform.platformsByName.keys(),
+        # self.assertEqual(kapow.Platform.platformsByName.keys(),
         #                  ['Reference', 'CPU'])
-        keys = adapter.Platform.platformsByName.keys()
+        keys = kapow.Platform.platformsByName.keys()
         self.assertIn('Reference', keys)
         self.assertIn('CPU', keys)
-        inst = adapter.Platform.platformsByName['CPU']
+        inst = kapow.Platform.platformsByName['CPU']
         attrs_to_check = [
             'findPlatform',
             'defaultPluginsDirectory',
@@ -287,7 +287,7 @@ class TestWrappedClasses(unittest.TestCase):
         self.assertEqual(inst.propertyDefaults['Threads'], '1')
 
     def testAmoebaMultipoleForce(self):
-        inst = adapter.AmoebaMultipoleForce()
+        inst = kapow.AmoebaMultipoleForce()
         attrs_to_check = [
             'multipoles',
             'AEwald',
@@ -325,7 +325,7 @@ class TestWrappedClasses(unittest.TestCase):
             inst.covalentMaps[0] = ((1,),) * 7
 
     def testTwoParticleAverageSite(self):
-        inst = adapter.TwoParticleAverageSite(2, 3, 0.2, 0.8)
+        inst = kapow.TwoParticleAverageSite(2, 3, 0.2, 0.8)
         attrs_to_check = ['particles']
         self.inst_test(inst, attrs_to_check)
         self.assertEqual(len(inst.particles), 2)
@@ -337,15 +337,15 @@ class TestWrappedClasses(unittest.TestCase):
     def testContext(self):
         """This test checks for a basic level of suitability
         in combining app classes with openmm classes"""
-        prmtop = adapter.app.AmberPrmtopFile('../tests/prot_lig1.prmtop')
+        prmtop = kapow.app.AmberPrmtopFile('../tests/prot_lig1.prmtop')
         system = prmtop.createSystem()
 
-        self.assertIsInstance(system, adapter.System)
-        integrator = adapter.VerletIntegrator(0.001)
-        context = adapter.Context(system, integrator)
+        self.assertIsInstance(system, kapow.System)
+        integrator = kapow.VerletIntegrator(0.001)
+        context = kapow.Context(system, integrator)
 
     def testCustomManyParticleForce(self):
-        cmpf = adapter.CustomManyParticleForce(3, 'r')
+        cmpf = kapow.CustomManyParticleForce(3, 'r')
         self.assertEqual(3, cmpf.numParticlesPerSet)
         self.assertEqual(3, len(cmpf.typeFilters))
         self.assertEqual(cmpf.typeFilters[0], ())
@@ -353,7 +353,7 @@ class TestWrappedClasses(unittest.TestCase):
         self.assertEqual(cmpf.typeFilters[0], (0, 1))
 
     def testCustomIntegrator(self):
-        inst = adapter.CustomIntegrator(0.002)
+        inst = kapow.CustomIntegrator(0.002)
         self.assertEqual(len(inst.perDofVariables), 0)
         inst.perDofVariables["oldx"] = 1
         self.assertEqual(len(inst.perDofVariables), 1)
@@ -365,7 +365,7 @@ class TestWrappedClasses(unittest.TestCase):
     def testDualAMDIntegrator(self):
         # this class starts with some perDofVariables and globalVariables
         # already assigned
-        inst = adapter.DualAMDIntegrator(0.002, 0, 0., 0., 0., 0.)
+        inst = kapow.DualAMDIntegrator(0.002, 0, 0., 0., 0., 0.)
         self.assertEqual(len(inst.perDofVariables), 2)
         inst.perDofVariables["test"] = 1
         self.assertEqual(len(inst.perDofVariables), 3)
@@ -381,7 +381,7 @@ class TestWrappedClasses(unittest.TestCase):
     def testAMDIntegrator(self):
         # this class starts with some perDofVariables and globalVariables
         # already assigned
-        inst = adapter.AMDIntegrator(0.002, 0, 0.)
+        inst = kapow.AMDIntegrator(0.002, 0, 0.)
         self.assertEqual(len(inst.perDofVariables), 1)
         inst.perDofVariables["test"] = 1
         self.assertEqual(len(inst.perDofVariables), 2)
@@ -397,7 +397,7 @@ class TestWrappedClasses(unittest.TestCase):
     def testMTSIntegrator(self):
         # this class starts with some perDofVariables and globalVariables
         # already assigned
-        inst = adapter.MTSIntegrator(1, [(0, 1), (1, 2)])
+        inst = kapow.MTSIntegrator(1, [(0, 1), (1, 2)])
         self.assertEqual(len(inst.perDofVariables), 1)
         inst.perDofVariables["test"] = 1
         self.assertEqual(len(inst.perDofVariables), 2)
@@ -409,7 +409,7 @@ class TestWrappedClasses(unittest.TestCase):
     def testAMDForceGroupIntegrator(self):
         # this class starts with some perDofVariables and globalVariables
         # already assigned
-        inst = adapter.AMDForceGroupIntegrator(0.002, 0, 0., 0.)
+        inst = kapow.AMDForceGroupIntegrator(0.002, 0, 0., 0.)
         self.assertEqual(len(inst.perDofVariables), 2)
         inst.perDofVariables["test"] = 1
         self.assertEqual(len(inst.perDofVariables), 3)
